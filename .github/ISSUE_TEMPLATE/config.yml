@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: דיווח אבטחה פרטי
+    url: https://github.com/tzvikahe-ops/tachles-open-source/security/advisories/new
+    about: אין לדווח על חולשות אבטחה ב-Issue ציבורי

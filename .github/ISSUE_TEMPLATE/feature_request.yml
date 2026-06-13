@@ -1,0 +1,28 @@
+name: הצעת שיפור
+description: הציעו יכולת או שינוי ממוקד
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: הבעיה
+      description: איזה צורך או קושי השינוי פותר?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: הפתרון המוצע
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: חלופות שנשקלו
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: תרומה
+      options:
+        - label: אשמח להכין Pull Request לאחר תיאום

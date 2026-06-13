@@ -1,0 +1,14 @@
+# Normalize line endings: store LF in the repo and check out LF everywhere.
+# Both dev machines are Windows; this prevents CRLF churn (and avoids deno fmt
+# rewriting line endings across the whole tree).
+* text=auto eol=lf
+
+# Binary files Git must never touch / convert.
+*.docx binary
+*.xlsx binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
