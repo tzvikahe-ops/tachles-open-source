@@ -473,6 +473,14 @@ npm run check                   # type-check (svelte-check)
 - כללי התנהגות בקהילה: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - דוח ההכנה לפרסום: [docs/open-source-readiness-report.md](docs/open-source-readiness-report.md)
 
+## יוצר ומתחזק
+
+נוצר ומתוחזק על ידי [Zvika Hershkovitz](https://github.com/tzvikahe-ops).
+
+אם תכלס שימושי לכם, אפשר לתמוך בפרויקט באמצעות כוכב ב-GitHub.
+
+**Author and maintainer:** [Zvika Hershkovitz](https://github.com/tzvikahe-ops).
+
 ## רישיון
 
 הפרויקט מופץ תחת [MIT License](LICENSE).
