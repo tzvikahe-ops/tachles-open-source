@@ -2,6 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Profile } from "../profiles.ts";
 import { sendMessage } from "../telegram.ts";
 import { logEvent } from "../events.ts";
+import {
+  listWebPushSubscriptions,
+  notificationBody,
+  sendWebPush,
+} from "../integrations/web_push.ts";
 
 // Generic runner for proactive agents. Each agent provides a system_prompt +
 // a context-loader. The runner:
@@ -352,10 +357,6 @@ export async function runAgent(
           )) === text
       ) {
         result = { status: "noop" };
-      } else if (profile.telegram_user_id === null) {
-        // Web-only profiles are delivered through the notification center.
-        // Until that channel is enabled, never pass a null chat id to Telegram.
-        result = { status: "noop" };
       } else {
         const rows: InlineButton[][] = [];
         if (actionKeyboard) {
@@ -371,21 +372,50 @@ export async function runAgent(
           ]);
         }
         const replyMarkup = rows.length ? { inline_keyboard: rows } : undefined;
-        await sendMessage(
-          profile.telegram_user_id,
-          text,
-          replyMarkup ? { reply_markup: replyMarkup } : {},
-        );
-        await logEvent(supabase, profile.id, {
-          kind: "proactive_sent",
-          source: "agent",
-          payload: { agent: agent.name, text_preview: text.slice(0, 120) },
+        let telegramSent = false;
+        if (profile.telegram_user_id !== null) {
+          try {
+            await sendMessage(
+              profile.telegram_user_id,
+              text,
+              replyMarkup ? { reply_markup: replyMarkup } : {},
+            );
+            telegramSent = true;
+          } catch (error) {
+            console.error(
+              `agent Telegram delivery failed for ${profile.id}:`,
+              error,
+            );
+          }
+        }
+        const subscriptions = await listWebPushSubscriptions(supabase, [
+          profile.id,
+        ]);
+        const pushResult = await sendWebPush(supabase, subscriptions, {
+          title: agent.role || "תכלס",
+          body: notificationBody(text, agent.role || "תכלס"),
+          url: "/?view=agents",
+          tag: `agent-${agent.name}`,
         });
-        result = {
-          status: "sent",
-          message_text: text,
-          state_update: stateUpdate,
-        };
+        if (!telegramSent && pushResult.sent === 0) {
+          result = { status: "noop", error: "no delivery channel" };
+        } else {
+          await logEvent(supabase, profile.id, {
+            kind: "proactive_sent",
+            source: "agent",
+            payload: {
+              agent: agent.name,
+              text_preview: text.slice(0, 120),
+              telegram: telegramSent,
+              web_push: pushResult.sent,
+            },
+          });
+          result = {
+            status: "sent",
+            message_text: text,
+            state_update: stateUpdate,
+          };
+        }
       }
     } else {
       // noop tool

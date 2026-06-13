@@ -1907,6 +1907,28 @@ main {
   color: var(--teal);
 }
 
+.memory-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.memory-card-actions button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.memory-card-actions button.is-pinned {
+  color: var(--terracotta);
+}
+
 .sheet-backdrop,
 .dialog-backdrop {
   position: fixed;
@@ -2087,8 +2109,360 @@ main {
   color: white;
 }
 
+.tools-view {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 34px;
+}
+
+.tool-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.tool-tabs button {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tool-tabs button.active {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.tool-panel {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px 12px 20px 14px;
+  background: var(--paper-raised);
+  box-shadow: 0 8px 22px rgba(18, 45, 73, 0.06);
+}
+
+.tool-panel h2,
+.tool-panel h3 {
+  margin: 0 0 12px;
+  font-family: "Frank Ruhl Libre", serif;
+}
+
+.tool-panel > p {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.tool-inline-form,
+.tool-health-form,
+.share-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tool-inline-form input,
+.tool-inline-form select,
+.tool-health-form input,
+.tool-health-form select,
+.share-form select,
+.share-url {
+  min-width: 0;
+  min-height: 44px;
+  flex: 1;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.tool-inline-form button,
+.tool-health-form button,
+.share-form button,
+.wide-tool-button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--teal);
+  color: white;
+  font-weight: 750;
+}
+
+.tool-back {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--teal);
+}
+
+.tool-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.tool-card-grid > button {
+  display: grid;
+  min-height: 112px;
+  align-content: center;
+  gap: 6px;
+  padding: 14px;
+  text-align: start;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.tool-card-grid small,
+.agent-list small,
+.shared-inbox small,
+.search-results small {
+  display: block;
+  color: var(--ink-soft);
+}
+
+.tool-list {
+  display: grid;
+  gap: 6px;
+}
+
+.tool-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+
+.tool-list > div > button {
+  display: flex;
+  min-height: 45px;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.tool-list > div > button:first-child {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.tool-list > div.is-done span {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.metric-grid > div {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.metric-grid strong {
+  font-size: 22px;
+}
+
+.metric-grid small,
+.metric-grid span {
+  color: var(--ink-soft);
+  font-size: 10px;
+}
+
+.agent-list,
+.shared-inbox,
+.search-results {
+  display: grid;
+  gap: 8px;
+}
+
+.agent-list > div,
+.shared-inbox > div,
+.search-results > a {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.agent-list button {
+  min-width: 58px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--line);
+  color: var(--ink-soft);
+}
+
+.agent-list button.toggle-on {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.timeline-narrative {
+  padding: 15px;
+  white-space: pre-wrap;
+  border-right: 3px solid var(--terracotta);
+  background: var(--paper);
+  color: var(--ink-soft);
+  line-height: 1.75;
+}
+
+.overview-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.overview-section > p {
+  display: flex;
+  margin: 0;
+  padding: 9px 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.overview-section small {
+  color: var(--ink-soft);
+}
+
+.task-tool-list {
+  display: grid;
+  gap: 10px;
+}
+
+.task-tool-list > div {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--paper);
+}
+
+.task-tool-list input {
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 9px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.task-tool-list > div > div {
+  display: grid;
+  margin-top: 9px;
+  grid-template-columns: 1fr 1fr 42px;
+  gap: 7px;
+}
+
+.task-tool-list select,
+.task-tool-list button {
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.task-tool-list .subtask-toggle {
+  width: 100%;
+  margin-top: 9px;
+  border-style: dashed;
+  color: var(--teal);
+}
+
+.task-tool-list .subtask-list {
+  display: grid;
+  margin-top: 8px;
+  grid-template-columns: 1fr;
+  gap: 5px;
+}
+
+.subtask-list > div:not(.subtask-form) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.subtask-list > div > button:first-child {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+}
+
+.subtask-list .subtask-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.subtask-list .subtask-form input {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-weight: 400;
+}
+
+.wide-tool-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.share-url {
+  width: 100%;
+  margin-bottom: 14px;
+  font-size: 11px;
+}
+
 @media (max-width: 370px) {
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tool-inline-form,
+  .tool-health-form,
+  .share-form {
+    flex-direction: column;
   }
 }

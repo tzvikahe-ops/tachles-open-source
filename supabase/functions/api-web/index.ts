@@ -9,7 +9,23 @@ import {
   listProjects,
   updateProject,
 } from "../_shared/bridge/projects.ts";
-import { createTask, listProjectTasks, listTopTasks, updateTask } from "../_shared/bridge/tasks.ts";
+import {
+  createTask,
+  deleteTask,
+  getSubtasks,
+  listProjectTasks,
+  listTopTasks,
+  updateTask,
+} from "../_shared/bridge/tasks.ts";
+import {
+  addItems,
+  deleteItem,
+  getListItems,
+  getOrCreateList,
+  getOwnedList,
+  listLists,
+  toggleItem,
+} from "../_shared/bridge/lists.ts";
 import {
   type CaptureStatus,
   createCapture,
@@ -49,17 +65,20 @@ import {
   updateEvent,
 } from "../_shared/integrations/google.ts";
 import { createOAuthState, getToken } from "../_shared/integrations/oauth.ts";
-import { logEvent } from "../_shared/events.ts";
+import { listRecentEvents, logEvent } from "../_shared/events.ts";
 import {
   type BubbleType,
   createBubble,
   deleteBubble,
   getOwnedBubble,
+  listPinnedBubbles,
   listRecentBubbles,
   searchBubbles,
+  setPinned,
   updateBubble,
 } from "../_shared/wellspring/memories.ts";
 import { captureUploadedFileToBubble } from "../_shared/wellspring/file_capture.ts";
+import { extractActions } from "../_shared/integrations/image_to_action.ts";
 import { AudioTooLargeError, transcribeUploadedAudio } from "../_shared/transcription.ts";
 import { routeAndDispatchAssistantText } from "../_shared/assistant_dispatch.ts";
 import { webEmailAllowed } from "../_shared/web_access.ts";
@@ -68,6 +87,26 @@ import {
   listWebPushSubscriptions,
   sendWebPush,
 } from "../_shared/integrations/web_push.ts";
+import {
+  HEALTH_METRICS,
+  type HealthMetric,
+  listRecentMetrics,
+  logMetric,
+} from "../_shared/health/metrics.ts";
+import { buildTimeline, parseTimelineWindow } from "../_shared/agents/timeline.ts";
+import { listActiveFacts } from "../_shared/agents/fact_extractor.ts";
+import { listRecentSnapshots } from "../_shared/snapshots.ts";
+import { unifiedSearch } from "../_shared/search.ts";
+import { searchDrive } from "../_shared/integrations/google_drive.ts";
+import { consumeInvite, createInvite } from "../_shared/social/invites.ts";
+import { listFriends, unfriend } from "../_shared/social/friends.ts";
+import {
+  inbox as sharedInbox,
+  outbox as sharedOutbox,
+  type ResourceType,
+  shareResource,
+  unshareResource,
+} from "../_shared/social/shares.ts";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 const DEFAULT_ORIGIN = "http://localhost:4173";
@@ -208,13 +247,320 @@ Deno.serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    if (resource === "lists") {
+      if (req.method === "GET" && !id) {
+        return withCors(
+          json({ lists: await listLists(supabase, profile.id) }),
+          cors,
+        );
+      }
+      if (req.method === "POST" && !id) {
+        const name = String(body.name ?? "").trim();
+        if (!name) return withCors(json({ error: "name_required" }, 400), cors);
+        const listId = await getOrCreateList(supabase, profile.id, name);
+        return withCors(
+          json({ list: await getOwnedList(supabase, profile.id, listId) }, 201),
+          cors,
+        );
+      }
+      const owned = id ? await getOwnedList(supabase, profile.id, id) : null;
+      if (id && !owned) {
+        return withCors(json({ error: "not_found" }, 404), cors);
+      }
+      if (req.method === "GET" && id) {
+        return withCors(
+          json({ list: owned, items: await getListItems(supabase, id) }),
+          cors,
+        );
+      }
+      if (req.method === "POST" && id && sub === "items") {
+        const contents = Array.isArray(body.items)
+          ? (body.items as unknown[]).map((item: unknown) => String(item).trim()).filter(
+            Boolean,
+          )
+          : [String(body.content ?? "").trim()].filter(Boolean);
+        if (contents.length === 0) {
+          return withCors(json({ error: "content_required" }, 400), cors);
+        }
+        await addItems(supabase, id, contents, "text");
+        return withCors(
+          json({ items: await getListItems(supabase, id) }, 201),
+          cors,
+        );
+      }
+    }
+
+    if (resource === "list-items" && id) {
+      if (req.method === "PATCH") {
+        const listId = await toggleItem(supabase, profile.id, id);
+        return withCors(
+          listId
+            ? json({ items: await getListItems(supabase, listId) })
+            : json({ error: "not_found" }, 404),
+          cors,
+        );
+      }
+      if (req.method === "DELETE") {
+        const listId = await deleteItem(supabase, profile.id, id);
+        return withCors(
+          listId ? json({ ok: true }) : json({ error: "not_found" }, 404),
+          cors,
+        );
+      }
+    }
+
+    if (resource === "health") {
+      if (req.method === "GET") {
+        const records = await listRecentMetrics(supabase, profile.id, 30, 300);
+        const averages = Object.fromEntries(HEALTH_METRICS.map((metric) => {
+          const cutoff = Date.now() - 7 * 86_400_000;
+          const values = records
+            .filter((record) =>
+              record.metric === metric &&
+              new Date(record.occurred_at).getTime() >= cutoff
+            )
+            .map((record) => Number(record.value));
+          return [
+            metric,
+            values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
+          ];
+        }));
+        return withCors(json({ records, averages }), cors);
+      }
+      if (req.method === "POST") {
+        const metric = String(body.metric) as HealthMetric;
+        const value = Number(body.value);
+        if (!HEALTH_METRICS.includes(metric) || !Number.isFinite(value)) {
+          return withCors(json({ error: "invalid_metric" }, 400), cors);
+        }
+        const recordId = await logMetric(supabase, profile.id, metric, value, {
+          source: "manual",
+          note: typeof body.note === "string" ? body.note : undefined,
+        });
+        await logEvent(supabase, profile.id, {
+          kind: "health_logged",
+          relatedEntity: { type: "health_metric", id: recordId },
+          payload: { metric, value },
+        });
+        return withCors(json({ id: recordId }, 201), cors);
+      }
+    }
+
+    if (resource === "agents") {
+      const { data: agentRows, error: agentError } = await supabase
+        .from("agents")
+        .select("id, name, role, enabled, schedule_cron, output_policy")
+        .eq("enabled", true)
+        .order("name");
+      if (agentError) {
+        throw new Error(`agent list failed: ${agentError.message}`);
+      }
+      if (req.method === "GET" && !id) {
+        const { data: settings } = await supabase
+          .from("user_agent_settings")
+          .select("agent_id, enabled")
+          .eq("owner_id", profile.id);
+        const enabledById = new Map(
+          (settings ?? []).map((row) => [row.agent_id as string, row.enabled]),
+        );
+        const agents = await Promise.all(
+          (agentRows ?? []).map(async (agent) => {
+            const { count } = await supabase
+              .from("agent_runs")
+              .select("id", { count: "exact", head: true })
+              .eq("owner_id", profile.id)
+              .eq("agent_id", agent.id)
+              .eq("status", "sent")
+              .gte(
+                "finished_at",
+                new Date(Date.now() - 7 * 86_400_000).toISOString(),
+              );
+            return {
+              ...agent,
+              enabled: enabledById.has(agent.id as string)
+                ? enabledById.get(agent.id as string)
+                : true,
+              sent_last_7d: count ?? 0,
+            };
+          }),
+        );
+        return withCors(json({ agents }), cors);
+      }
+      if (req.method === "PATCH" && id) {
+        const agent = (agentRows ?? []).find((row) => row.id === id);
+        if (!agent) return withCors(json({ error: "not_found" }, 404), cors);
+        const enabled = Boolean(body.enabled);
+        await supabase.from("user_agent_settings").upsert({
+          owner_id: profile.id,
+          agent_id: id,
+          enabled,
+        }, { onConflict: "agent_id,owner_id" });
+        return withCors(json({ ok: true, enabled }), cors);
+      }
+    }
+
+    if (req.method === "GET" && resource === "timeline") {
+      const window = parseTimelineWindow(
+        url.searchParams.get("window") ?? "שבוע",
+        profile.timezone,
+      );
+      return withCors(
+        json({
+          label: window.label,
+          text: await buildTimeline(supabase, profile, window),
+        }),
+        cors,
+      );
+    }
+
+    if (req.method === "GET" && resource === "search") {
+      const query = (url.searchParams.get("q") ?? "").trim();
+      if (!query) return withCors(json({ error: "query_required" }, 400), cors);
+      return withCors(
+        json(await unifiedSearch(supabase, profile.id, query, 10)),
+        cors,
+      );
+    }
+
+    if (req.method === "GET" && resource === "drive") {
+      const query = (url.searchParams.get("q") ?? "").trim();
+      if (!query) return withCors(json({ error: "query_required" }, 400), cors);
+      try {
+        return withCors(
+          json({ files: await searchDrive(supabase, profile.id, query, 20) }),
+          cors,
+        );
+      } catch (error) {
+        if (
+          error instanceof Error && error.message === "Google not connected"
+        ) {
+          return withCors(json({ error: "google_not_connected" }, 409), cors);
+        }
+        throw error;
+      }
+    }
+
+    if (resource === "board") {
+      if (req.method === "GET") {
+        return withCors(
+          json({ memories: await listPinnedBubbles(supabase, profile.id) }),
+          cors,
+        );
+      }
+      if (req.method === "PATCH" && id) {
+        const pinned = Boolean(body.pinned);
+        const ok = await setPinned(supabase, profile.id, id, pinned);
+        return withCors(
+          ok ? json({ ok: true }) : json(
+            { error: pinned ? "pin_limit" : "not_found" },
+            pinned ? 409 : 404,
+          ),
+          cors,
+        );
+      }
+    }
+
+    if (req.method === "GET" && resource === "people") {
+      return withCors(
+        json({
+          people: await listActiveFacts(supabase, profile.id, ["relationship"]),
+        }),
+        cors,
+      );
+    }
+
+    if (req.method === "GET" && resource === "activity") {
+      return withCors(
+        json({ events: await listRecentEvents(supabase, profile.id, 50) }),
+        cors,
+      );
+    }
+
+    if (req.method === "GET" && resource === "stats") {
+      return withCors(
+        json({
+          snapshots: await listRecentSnapshots(supabase, profile.id, 14),
+        }),
+        cors,
+      );
+    }
+
+    if (resource === "friends") {
+      if (req.method === "GET" && !id) {
+        return withCors(
+          json({ friends: await listFriends(supabase, profile.id) }),
+          cors,
+        );
+      }
+      if (req.method === "POST" && id === "invite") {
+        const invite = await createInvite(supabase, profile.id);
+        const base = Deno.env.get("WEB_APP_URL")?.replace(/\/+$/, "") ??
+          DEFAULT_ORIGIN;
+        return withCors(
+          json({ ...invite, url: `${base}/?invite=${invite.token}` }, 201),
+          cors,
+        );
+      }
+      if (req.method === "POST" && id === "consume") {
+        const token = String(body.token ?? "").trim();
+        const consumed = token ? await consumeInvite(supabase, token, profile.id) : null;
+        return withCors(
+          consumed ? json({ ok: true }) : json({ error: "invalid_or_expired" }, 400),
+          cors,
+        );
+      }
+      if (req.method === "DELETE" && id) {
+        return withCors(
+          await unfriend(supabase, profile.id, id)
+            ? json({ ok: true })
+            : json({ error: "not_found" }, 404),
+          cors,
+        );
+      }
+    }
+
+    if (resource === "shares") {
+      if (req.method === "GET" && !id) {
+        const box = url.searchParams.get("box") === "outbox" ? "outbox" : "inbox";
+        const shares = box === "outbox"
+          ? await sharedOutbox(supabase, profile.id)
+          : await sharedInbox(supabase, profile.id);
+        return withCors(json({ shares }), cors);
+      }
+      if (req.method === "POST" && !id) {
+        const type = String(body.resource_type) as ResourceType;
+        if (!["list", "task", "bubble", "reminder"].includes(type)) {
+          return withCors(json({ error: "invalid_resource_type" }, 400), cors);
+        }
+        await shareResource(
+          supabase,
+          profile.id,
+          String(body.friend_id),
+          type,
+          String(body.resource_id),
+          body.permission === "write" || body.permission === "comment" ? body.permission : "read",
+        );
+        return withCors(json({ ok: true }, 201), cors);
+      }
+      if (req.method === "DELETE" && id) {
+        return withCors(
+          await unshareResource(supabase, profile.id, id)
+            ? json({ ok: true })
+            : json({ error: "not_found" }, 404),
+          cors,
+        );
+      }
+    }
+
     if (resource === "push") {
       if (req.method === "GET" && !id) {
         const { count, error } = await supabase
           .from("web_push_subscriptions")
           .select("id", { count: "exact", head: true })
           .eq("owner_id", profile.id);
-        if (error) throw new Error(`push subscription count failed: ${error.message}`);
+        if (error) {
+          throw new Error(`push subscription count failed: ${error.message}`);
+        }
         return withCors(
           json({
             available: Boolean(getVapidPublicKey()),
@@ -226,7 +572,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
 
       if (req.method === "POST" && id === "test") {
-        const subscriptions = await listWebPushSubscriptions(supabase, [profile.id]);
+        const subscriptions = await listWebPushSubscriptions(supabase, [
+          profile.id,
+        ]);
         const result = await sendWebPush(supabase, subscriptions, {
           title: "תכלס מחוברת",
           body: "התראות Push פועלות במכשיר הזה.",
@@ -249,7 +597,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
         const p256dh = typeof keys.p256dh === "string" ? keys.p256dh.trim() : "";
         const auth = typeof keys.auth === "string" ? keys.auth.trim() : "";
         if (!endpoint.startsWith("https://") || !p256dh || !auth) {
-          return withCors(json({ error: "invalid_push_subscription" }, 400), cors);
+          return withCors(
+            json({ error: "invalid_push_subscription" }, 400),
+            cors,
+          );
         }
         const expirationTime = typeof body.expiration_time === "number" &&
             Number.isFinite(body.expiration_time)
@@ -266,7 +617,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
           },
           { onConflict: "endpoint" },
         );
-        if (error) throw new Error(`push subscription save failed: ${error.message}`);
+        if (error) {
+          throw new Error(`push subscription save failed: ${error.message}`);
+        }
         return withCors(json({ ok: true }), cors);
       }
 
@@ -280,7 +633,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
           .delete()
           .eq("owner_id", profile.id)
           .eq("endpoint", endpoint);
-        if (error) throw new Error(`push subscription delete failed: ${error.message}`);
+        if (error) {
+          throw new Error(`push subscription delete failed: ${error.message}`);
+        }
         return withCors(json({ ok: true }), cors);
       }
     }
@@ -321,6 +676,55 @@ Deno.serve(async (req: Request): Promise<Response> => {
           );
         }
         const bytes = new Uint8Array(await uploaded.arrayBuffer());
+        const mode = String(form?.get("mode") ?? "memory");
+        if (mode === "actions") {
+          if (!uploaded.type.startsWith("image/")) {
+            return withCors(json({ error: "image_required" }, 400), cors);
+          }
+          let binary = "";
+          for (const byte of bytes) binary += String.fromCharCode(byte);
+          const extracted = await extractActions(
+            btoa(binary),
+            uploaded.type,
+            String(form?.get("caption") ?? "").trim() || null,
+          );
+          const tasks = [];
+          const listItems = extracted.items.filter((item) => item.kind === "list_item");
+          for (
+            const item of extracted.items.filter((row) => row.kind === "task")
+          ) {
+            const task = await createTask(supabase, profile.id, item.text);
+            tasks.push(task);
+            await logEvent(supabase, profile.id, {
+              kind: "task_created",
+              relatedEntity: { type: "task", id: task.id },
+              payload: { title: task.title, source: "image" },
+            });
+          }
+          if (listItems.length > 0) {
+            const listId = await getOrCreateList(
+              supabase,
+              profile.id,
+              "מהתמונה",
+            );
+            await addItems(
+              supabase,
+              listId,
+              listItems.map((item) => item.text),
+              "text",
+            );
+          }
+          return withCors(
+            json({
+              message: extracted.items.length > 0
+                ? `יצרתי ${tasks.length} משימות ו־${listItems.length} פריטי רשימה.`
+                : extracted.summary ?? "לא מצאתי פעולות בתמונה.",
+              actions: extracted.items,
+              tasks,
+            }),
+            cors,
+          );
+        }
         const result = await captureUploadedFileToBubble(supabase, {
           ownerId: profile.id,
           bytes,
@@ -958,22 +1362,35 @@ Deno.serve(async (req: Request): Promise<Response> => {
         if (!title) {
           return withCors(json({ error: "title_required" }, 400), cors);
         }
-        const task = await createTask(supabase, profile.id, title, null, {
-          projectId: typeof body.project_id === "string" ? body.project_id : null,
-          dueAt: typeof body.due_at === "string" ? body.due_at : null,
-          estimatedMinutes: Number.isInteger(body.estimated_minutes)
-            ? Number(body.estimated_minutes)
-            : null,
-          energyLevel: ["low", "medium", "high"].includes(String(body.energy_level))
-            ? body.energy_level as "low" | "medium" | "high"
-            : null,
-        });
+        const parentTaskId = typeof body.parent_task_id === "string" ? body.parent_task_id : null;
+        const task = await createTask(
+          supabase,
+          profile.id,
+          title,
+          parentTaskId,
+          {
+            projectId: typeof body.project_id === "string" ? body.project_id : null,
+            dueAt: typeof body.due_at === "string" ? body.due_at : null,
+            estimatedMinutes: Number.isInteger(body.estimated_minutes)
+              ? Number(body.estimated_minutes)
+              : null,
+            energyLevel: ["low", "medium", "high"].includes(String(body.energy_level))
+              ? body.energy_level as "low" | "medium" | "high"
+              : null,
+          },
+        );
         await logEvent(supabase, profile.id, {
           kind: "task_created",
           relatedEntity: { type: "task", id: task.id },
           payload: { title: task.title, project_id: task.project_id },
         });
         return withCors(json({ task }, 201), cors);
+      }
+      if (req.method === "GET" && id && sub === "subtasks") {
+        return withCors(
+          json({ tasks: await getSubtasks(supabase, profile.id, id) }),
+          cors,
+        );
       }
       if (req.method === "PATCH" && id) {
         const task = await updateTask(supabase, profile.id, id, {
@@ -1005,6 +1422,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
         });
         return withCors(
           task ? json({ task }) : json({ error: "not_found" }, 404),
+          cors,
+        );
+      }
+      if (req.method === "DELETE" && id) {
+        const deleted = await deleteTask(supabase, profile.id, id);
+        return withCors(
+          deleted ? json({ ok: true }) : json({ error: "not_found" }, 404),
           cors,
         );
       }

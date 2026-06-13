@@ -1113,14 +1113,16 @@ async function handleShareCommand(
     `✅ שותף עם ${escapeHtml(friend.display_name ?? "חבר/ה")}.`,
   );
   // Notify recipient.
-  try {
-    await sendMessage(
-      friend.telegram_user_id,
-      `🤝 ${escapeHtml(profile.display_name ?? "חבר/ה")} שיתף/ה איתך ${
-        RESOURCE_LABELS[type]
-      }. /shared להצגה.`,
-    );
-  } catch (_) { /* ignore */ }
+  if (friend.telegram_user_id !== null) {
+    try {
+      await sendMessage(
+        friend.telegram_user_id,
+        `🤝 ${escapeHtml(profile.display_name ?? "חבר/ה")} שיתף/ה איתך ${
+          RESOURCE_LABELS[type]
+        }. /shared להצגה.`,
+      );
+    } catch (_) { /* ignore */ }
+  }
 }
 
 const EXTRACT_TRIGGERS = [
