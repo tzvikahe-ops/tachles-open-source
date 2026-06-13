@@ -14,11 +14,12 @@ export interface BubbleSummary {
   content: string;
   tags: string[];
   source_url: string | null;
+  pinned: boolean;
   created_at: string;
   updated_at: string;
 }
 
-const SELECT = "id, type, title, content, tags, source_url, created_at, updated_at";
+const SELECT = "id, type, title, content, tags, source_url, pinned, created_at, updated_at";
 
 export interface CreateBubbleInput {
   ownerId: string;
@@ -49,7 +50,9 @@ export async function createBubble(
     .select(SELECT)
     .single();
   if (error || !data) {
-    throw new Error(`createBubble failed: ${error?.message ?? "no row returned"}`);
+    throw new Error(
+      `createBubble failed: ${error?.message ?? "no row returned"}`,
+    );
   }
   return data as BubbleSummary;
 }
@@ -107,7 +110,9 @@ export async function updateBubble(
   if (patch.type !== undefined) updateRow.type = patch.type;
   if (patch.tags !== undefined) updateRow.tags = patch.tags;
   if (patch.sourceUrl !== undefined) updateRow.source_url = patch.sourceUrl;
-  if (Object.keys(updateRow).length === 0) return getOwnedBubble(supabase, ownerId, id);
+  if (Object.keys(updateRow).length === 0) {
+    return getOwnedBubble(supabase, ownerId, id);
+  }
   const { data, error } = await supabase
     .from("memory_bubbles")
     .update(updateRow)
@@ -181,7 +186,12 @@ export async function searchBubbles(
         return full.toSorted((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
       }
     }
-    if (error) console.error("match_bubbles RPC failed, falling back to ilike:", error.message);
+    if (error) {
+      console.error(
+        "match_bubbles RPC failed, falling back to ilike:",
+        error.message,
+      );
+    }
   }
   const needle = `%${query.replace(/[%_]/g, " ")}%`;
   const { data, error } = await supabase

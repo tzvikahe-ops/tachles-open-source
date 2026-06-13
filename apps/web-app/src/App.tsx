@@ -31,6 +31,7 @@ import { CalendarScreen } from "./features/calendar/CalendarScreen";
 import { MemoryScreen } from "./features/memory/MemoryScreen";
 import { RemindersScreen } from "./features/reminders/RemindersScreen";
 import { PushNotificationCard } from "./features/push/PushNotificationCard";
+import { ToolsScreen } from "./features/tools/ToolsScreen";
 import {
   ProjectActionSheet,
   type ProjectActionMode,
@@ -106,7 +107,7 @@ const navItems = [
   { id: "calendar", label: "יומן", icon: CalendarDays },
   { id: "projects", label: "פרויקטים", icon: FolderKanban },
   { id: "memory", label: "זיכרון", icon: BookOpenText },
-  { id: "more", label: "עוד", icon: Menu },
+  { id: "more", label: "כלים", icon: Menu },
 ] as const;
 
 function toLaterItem(task: ApiTask): LaterItem {
@@ -139,6 +140,7 @@ export function App({
     const params = new URLSearchParams(window.location.search);
     const integration = params.get("integration");
     if (params.get("view") === "reminders") return "reminders";
+    if (params.get("view") === "agents") return "more";
     return integration === "calendar-connected" ? "calendar" : integration ? "more" : "home";
   });
   const [draft, setDraft] = useState("");
@@ -194,6 +196,23 @@ export function App({
       active = false;
     };
   }, [session]);
+
+  useEffect(() => {
+    if (!session || demoMode) return;
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get("invite");
+    if (!invite) return;
+    apiFetch(session, "/friends/consume", {
+      method: "POST",
+      body: JSON.stringify({ token: invite }),
+    }).then(() => {
+      setNotice("החיבור לחבר הושלם.");
+      params.delete("invite");
+      window.history.replaceState({}, "", `${window.location.pathname}${
+        params.size ? `?${params}` : ""
+      }`);
+    }).catch(() => setNotice("קישור ההזמנה אינו תקף או שפג תוקפו."));
+  }, [session, demoMode]);
 
   useEffect(() => {
     if (!recording) return;
@@ -346,13 +365,20 @@ export function App({
     try {
       const form = new FormData();
       form.append("file", file);
+      if (file.type.startsWith("image/") && (captureMode === "task" || captureMode === "list")) {
+        form.append("mode", "actions");
+      }
       if (draft.trim()) form.append("caption", draft.trim());
-      const response = await apiFetch<{ message: string }>(
+      const response = await apiFetch<{ message: string; tasks?: ApiTask[] }>(
         session,
         "/assistant/file",
         { method: "POST", body: form },
       );
+      if (response.tasks?.length) {
+        setItems((current) => [...response.tasks!.map(toLaterItem), ...current]);
+      }
       setDraft("");
+      setCaptureMode("smart");
       setNotice(response.message);
     } catch (error) {
       if (error instanceof ApiError && error.code === "file_too_large") {
@@ -771,9 +797,11 @@ export function App({
         </div>
 
         <section className="settings-view" hidden={activeNav !== "more"}>
+          <ToolsScreen session={session} demoMode={demoMode} notify={showNotice} />
+
           <div className="projects-title">
             <p className="date-line">חיבורים וגיבוי</p>
-            <h1>עוד</h1>
+            <h1>חיבורים</h1>
             <p>שירותים שמרחיבים את המחברת בלי להפוך אותה למסובכת.</p>
           </div>
 

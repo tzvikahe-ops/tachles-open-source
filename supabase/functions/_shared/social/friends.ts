@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export interface FriendSummary {
   profile_id: string;
   display_name: string | null;
-  telegram_user_id: number;
+  telegram_user_id: number | null;
   since: string;
 }
 
@@ -24,7 +24,11 @@ export async function listFriends(
     .eq("status", "accepted")
     .or(`owner_id.eq.${ownerId},friend_profile_id.eq.${ownerId}`);
   if (error) throw new Error(`listFriends failed: ${error.message}`);
-  type Side = { id: string; display_name: string | null; telegram_user_id: number };
+  type Side = {
+    id: string;
+    display_name: string | null;
+    telegram_user_id: number | null;
+  };
   const rows = (data ?? []) as unknown as Array<{
     owner_id: string;
     friend_profile_id: string;
@@ -56,7 +60,9 @@ export async function findFriendByUsername(
   const trimmed = query.replace(/^@/, "").trim().toLowerCase();
   const friends = await listFriends(supabase, ownerId);
   for (const f of friends) {
-    if (f.display_name && f.display_name.toLowerCase().includes(trimmed)) return f;
+    if (f.display_name && f.display_name.toLowerCase().includes(trimmed)) {
+      return f;
+    }
   }
   return null;
 }

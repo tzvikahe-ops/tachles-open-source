@@ -1,11 +1,13 @@
 # תכלס (Tachles)
 
-[![CI](https://github.com/tzvikahe-ops/tachles-open-source/actions/workflows/ci.yml/badge.svg)](https://github.com/tzvikahe-ops/tachles-open-source/actions/workflows/ci.yml)
+[![CI](https://github.com/tzvikahe-ops/Tachles/actions/workflows/ci.yml/badge.svg)](https://github.com/tzvikahe-ops/Tachles/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 מחברת אישית חכמה בעברית, זמינה כאפליקציית PWA עצמאית וכבוט Telegram:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftzvikahe-ops%2Ftachles-open-source&root-directory=apps%2Fweb-app&env=VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,VITE_API_BASE)
+**אפליקציית PWA:** https://tachles-web.vercel.app
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftzvikahe-ops%2FTachles&root-directory=apps%2Fweb-app&env=VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,VITE_API_BASE)
 
 **התקנה עצמית:** [מדריך בעברית](SELF_HOSTING.md) ·
 [English guide](SELF_HOSTING.en.md)
@@ -18,6 +20,11 @@
 
 האפליקציה העצמאית היא הממשק הראשי החדש. הבוט ו-Telegram Mini App נשארים פעילים
 כערוצי שימוש נוספים ועוברים דרך אותם שירותים ומסד נתונים.
+
+ב־PWA אפשר להשתמש בלי להגדיר בוט Telegram: הזנה חופשית בטקסט או בקול, תזכורות
+Push, יומן Google, משימות ותתי־משימות, רשימות, זיכרונות וקבצים, חילוץ פעולות
+מתמונה, פרויקטים ותוכניות ביצוע, בריאות, סוכנים פרואקטיביים, חיפוש מקומי וב־Drive,
+ציר זמן, תצלומי מצב, שיתוף בין חברים וסנכרון Obsidian.
 
 הפרויקט מופץ כקוד פתוח וכל היכולות זמינות לכל משתמש, ללא תוכניות תשלום,
 תקופת ניסיון או הגבלת פיצ'רים. שיתוף בין חברים הוא ממשק רב-המשתמשים היחיד בחשבון.
@@ -219,8 +226,8 @@ scripts/
 שכפול והתקנה:
 
 ```bash
-git clone https://github.com/tzvikahe-ops/tachles-open-source.git
-cd tachles-open-source
+git clone https://github.com/tzvikahe-ops/Tachles.git
+cd Tachles
 cp .env.example .env.local
 
 cd apps/web-app

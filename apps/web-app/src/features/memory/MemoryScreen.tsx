@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { BookOpenText, ExternalLink, Plus, Search } from "lucide-react";
+import { BookOpenText, ExternalLink, Pin, Plus, Search } from "lucide-react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { apiFetch } from "../../lib/api";
 import { type MemoryDraft, MemorySheet } from "./MemorySheet";
@@ -19,6 +19,7 @@ const demoMemories: Memory[] = [
     content: "דברים קטנים נסגרים טוב יותר כשהם מקבלים שעה ביומן.",
     tags: ["מיקוד", "הרגלים"],
     source_url: null,
+    pinned: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -29,6 +30,7 @@ const demoMemories: Memory[] = [
     content: "המסך הראשי צריך לתת ערך גם בלי לפתוח שיחה עם הבוט.",
     tags: ["תכלס"],
     source_url: null,
+    pinned: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
@@ -82,6 +84,7 @@ export function MemoryScreen(
       const memory: Memory = {
         ...payload,
         id: editing === "new" ? `demo-${Date.now()}` : editing!.id,
+        pinned: editing === "new" ? false : editing!.pinned,
         created_at: editing === "new" ? new Date().toISOString() : editing!.created_at,
         updated_at: new Date().toISOString(),
       };
@@ -128,6 +131,28 @@ export function MemoryScreen(
       notify("לא הצלחתי למחוק את הזיכרון.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const togglePinned = async (memory: Memory) => {
+    const pinned = !memory.pinned;
+    if (!session) {
+      setMemories((current) =>
+        current.map((item) => item.id === memory.id ? { ...item, pinned } : item)
+      );
+      return;
+    }
+    try {
+      await apiFetch(session, `/board/${memory.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ pinned }),
+      });
+      setMemories((current) =>
+        current.map((item) => item.id === memory.id ? { ...item, pinned } : item)
+      );
+      notify(pinned ? "הזיכרון ננעץ בלוח." : "הזיכרון הוסר מהלוח.");
+    } catch {
+      notify(pinned ? "אפשר לנעוץ עד עשרה זיכרונות." : "לא הצלחתי להסיר את הנעיצה.");
     }
   };
 
@@ -196,8 +221,20 @@ export function MemoryScreen(
                 <p>{memory.content}</p>
                 <footer>
                   <div>{memory.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div>
-                  {memory.source_url
-                    ? (
+                  <div className="memory-card-actions">
+                    <button
+                      type="button"
+                      className={memory.pinned ? "is-pinned" : ""}
+                      aria-label={memory.pinned ? "הסרה מהלוח" : "נעיצה ללוח"}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void togglePinned(memory);
+                      }}
+                    >
+                      <Pin size={16} fill={memory.pinned ? "currentColor" : "none"} />
+                    </button>
+                    {memory.source_url
+                      ? (
                       <a
                         href={memory.source_url}
                         target="_blank"
@@ -208,7 +245,8 @@ export function MemoryScreen(
                         <ExternalLink size={16} />
                       </a>
                     )
-                    : null}
+                      : null}
+                  </div>
                 </footer>
               </article>
             ))}

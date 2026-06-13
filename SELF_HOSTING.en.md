@@ -18,8 +18,8 @@ be enabled separately.
 ## Install
 
 ```powershell
-git clone https://github.com/tzvikahe-ops/tachles-open-source.git
-cd tachles-open-source
+git clone https://github.com/tzvikahe-ops/Tachles.git
+cd Tachles
 Copy-Item .env.example .env.local
 Copy-Item apps/web-app/.env.example apps/web-app/.env
 npm --prefix apps/web-app ci
@@ -54,7 +54,7 @@ Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and a `VAPID_SUBJECT` mailto value.
 
 ## Deploy the PWA shell
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftzvikahe-ops%2Ftachles-open-source&root-directory=apps%2Fweb-app&env=VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,VITE_API_BASE)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftzvikahe-ops%2FTachles&root-directory=apps%2Fweb-app&env=VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,VITE_API_BASE)
 
 Use `apps/web-app` as the root directory, Vite as the framework, `npm run build`
 as the build command, and `dist` as the output directory. Add the three
