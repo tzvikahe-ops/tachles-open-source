@@ -9,95 +9,296 @@
   </head>
   <body>
     <main class="shell">
-      <header class="brand">
-        <span class="brand-mark" aria-hidden="true">+</span>
-        <span>תכלס</span>
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">+</span>
+          <span>תכלס</span>
+        </div>
+        <span class="local-badge">התקנה מקומית ומאובטחת</span>
       </header>
 
-      <section class="wizard-card" aria-label="אשף ההתקנה של תכלס">
-        <div id="welcome-screen">
-          <p class="eyebrow">אשף התקנה מקומי</p>
-          <h1 id="welcome-title">בואו נקים את תכלס שלכם</h1>
-          <!-- deno-fmt-ignore -->
-          <p class="intro">
-            האשף יוביל אתכם צעד אחר צעד עד לאפליקציית PWA עצמאית בחשבונות שלכם.
-          </p>
+      <div class="wizard-layout">
+        <nav class="step-nav" aria-label="שלבי ההתקנה">
+          <ol id="step-list"></ol>
+        </nav>
 
-          <div class="privacy-note">
-            <span class="privacy-icon" aria-hidden="true">✓</span>
-            <div>
-              <strong>המפתחות נשארים במחשב הזה</strong>
-              <!-- deno-fmt-ignore -->
+        <section class="wizard-card" aria-label="אשף ההתקנה של תכלס">
+          <div class="mobile-progress">
+            <span id="mobile-step">שלב 1 מתוך 8</span>
+            <span id="mobile-step-name">פתיחה</span>
+          </div>
+
+          <section class="step-screen" data-step="1">
+            <p class="eyebrow">מחברת אישית חכמה, בחשבונות שלכם</p>
+            <h1>בואו נקים את תכלס שלכם</h1>
+            <p class="intro">
+              האשף יחבר את הקוד ל־Supabase ול־Vercel ויביא אתכם ל־PWA
+              עצמאית שאפשר לפתוח מהטלפון.
+            </p>
+            <div class="trust-grid">
+              <div>
+                <span aria-hidden="true">01</span>
+                <strong>הסודות נשארים במחשב</strong>
+                <p>המפתחות נשמרים רק בקובץ מקומי שמוחרג מ־Git.</p>
+              </div>
+              <div>
+                <span aria-hidden="true">02</span>
+                <strong>שינוי רק לאחר אישור</strong>
+                <p>
+                  התקנות ופריסות מופעלות רק בלחיצה מפורשת
+                  שלכם.
+                </p>
+              </div>
+            </div>
+            <button class="primary" data-next="2" type="button">מתחילים</button>
+          </section>
+
+          <section class="step-screen" data-step="2" hidden>
+            <p class="eyebrow">בחירת מסלול</p>
+            <h1>כמה תכלס תרצו?</h1>
+            <p class="intro">
+              אפשר להתחיל בסיסי ולהוסיף יכולות בהמשך.
+            </p>
+            <div class="mode-options">
+              <button class="mode-card" data-mode="full" type="button">
+                <span class="recommended">מומלץ</span>
+                <strong>התקנה מלאה</strong>
+                <span>AI, קול, Push, Calendar, Drive ו־Obsidian.</span>
+              </button>
+              <button class="mode-card" data-mode="basic" type="button">
+                <strong>התקנה בסיסית</strong>
+                <span>משימות, רשימות, זיכרונות, פרויקטים
+                  ותזכורות.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="step-screen" data-step="3" hidden>
+            <p class="eyebrow">הכנת המחשב</p>
+            <h1>כלי העבודה</h1>
+            <p class="intro">
+              נבדוק מה כבר מותקן. התקנת כלי חסר תתבצע רק לאחר
+              לחיצה שלכם.
+            </p>
+            <div class="tool-list" id="tool-list">
+              <p class="loading">בודק את המחשב...</p>
+            </div>
+            <div class="button-row">
+              <button class="secondary" id="refresh-tools" type="button">
+                בדיקה חוזרת
+              </button>
+              <button class="primary compact" id="tools-next" type="button" disabled>
+                ממשיכים ל־Supabase
+              </button>
+            </div>
+          </section>
+
+          <section class="step-screen" data-step="4" hidden>
+            <p class="eyebrow">מסד הנתונים והשרת</p>
+            <h1>חיבור Supabase</h1>
+            <p class="intro">
+              צרו פרויקט והעתיקו את שלושת הערכים. האשף יחיל
+              את הסכמה לאחר אישור.
+            </p>
+            <a
+              class="external-link"
+              href="https://supabase.com/dashboard/projects"
+              target="_blank"
+              rel="noreferrer"
+            >
+              פתיחת Supabase Dashboard
+            </a>
+            <form id="supabase-form" class="field-grid">
+              <label>
+                Project Ref
+                <input
+                  name="SUPABASE_PROJECT_REF"
+                  pattern="[a-z0-9]{20}"
+                  required
+                  autocomplete="off"
+                >
+                <small>מופיע בכתובת הפרויקט וב־Project Settings.</small>
+              </label>
+              <label>
+                Publishable key
+                <input name="VITE_SUPABASE_PUBLISHABLE_KEY" required autocomplete="off">
+              </label>
+              <label>
+                סיסמת מסד הנתונים
+                <input
+                  name="SUPABASE_DB_PASSWORD"
+                  type="password"
+                  required
+                  autocomplete="new-password"
+                >
+              </label>
+              <button class="primary" type="submit">שמירה והכנת Supabase</button>
+            </form>
+            <div class="manual-note" id="vault-note" hidden>
+              <strong>פעולה ידנית אחת לאחר הפריסה</strong>
               <p>
-                השרת פועל מקומית בלבד ואינו שולח סודות לאתר של תכלס.
+                האשף יפיק קובץ Vault. בשלב היכולות נציג היכן
+                להריץ אותו ב־SQL Editor.
               </p>
             </div>
-          </div>
+          </section>
 
-          <button class="primary" id="start-button" type="button" disabled>
-            מתחילים
-          </button>
-        </div>
-
-        <div id="mode-screen" hidden>
-          <p class="eyebrow" id="mode-eyebrow">שלב 2 מתוך 8</p>
-          <h1 id="mode-title">איך תרצו להתקין?</h1>
-          <p class="intro" id="mode-intro">
-            אפשר להוסיף יכולות נוספות גם לאחר ההתקנה.
-          </p>
-
-          <div class="mode-options">
-            <button class="mode-card" data-mode="full" type="button">
-              <span class="recommended">מומלץ</span>
-              <strong>התקנה מלאה</strong>
-              <span>AI, קול, Push, Google Calendar, Drive ו־Obsidian.</span>
-            </button>
-            <button class="mode-card" data-mode="basic" type="button">
-              <strong>התקנה בסיסית</strong>
-              <!-- deno-fmt-ignore -->
-              <span>משימות, רשימות, זיכרונות, פרויקטים ותזכורות ידניות.</span>
-            </button>
-          </div>
-
-          <div class="action-panel" id="action-panel" hidden>
-            <strong>בדיקת מנגנון ההתקנה</strong>
-            <p>
-              הפעולה המקומית בודקת הרצה, מעקב, ביטול ויומן
-              לפני חיבור שירותי ענן.
+          <section class="step-screen" data-step="5" hidden>
+            <p class="eyebrow">פרסום האפליקציה</p>
+            <h1>פריסה ב־Vercel</h1>
+            <p class="intro">
+              האשף יבנה את אפליקציית הווב, יפתח התחברות ל־Vercel
+              במקרה הצורך ויפרסם ל־Production.
             </p>
-            <div class="action-buttons">
-              <button class="primary" id="run-check" type="button">
-                הפעלת בדיקה מקומית
-              </button>
-              <button class="secondary" id="cancel-check" type="button" hidden>
-                ביטול
+            <div class="summary-strip">
+              <span>Root Directory</span>
+              <code>apps/web-app</code>
+            </div>
+            <button class="primary" id="deploy-vercel" type="button">
+              בנייה ופריסה ב־Vercel
+            </button>
+            <div class="result-box" id="vercel-result" hidden></div>
+            <div class="manual-note" id="auth-url-note" hidden>
+              <strong>חיבור כתובת הכניסה</strong>
+              <p>
+                ב־Supabase הגדירו את כתובת האפליקציה בתור Site URL
+                והוסיפו אותה ל־Redirect URLs.
+              </p>
+              <a
+                id="auth-settings-link"
+                class="external-link"
+                target="_blank"
+                rel="noreferrer"
+              >
+                פתיחת הגדרות Auth
+              </a>
+              <button class="secondary" id="auth-url-done" type="button">
+                הגדרתי את הכתובת
               </button>
             </div>
-            <details>
-              <summary>יומן טכני</summary>
-              <pre id="technical-log">עוד אין פלט להצגה.</pre>
-            </details>
+          </section>
+
+          <section class="step-screen" data-step="6" hidden>
+            <p class="eyebrow">יכולות חכמות והתראות</p>
+            <h1>AI ו־Push</h1>
+            <p class="intro" id="capabilities-intro">
+              המפתחות יישמרו מקומית ויועלו ישירות לפרויקט
+              Supabase שלכם.
+            </p>
+            <form id="capabilities-form" class="field-grid">
+              <label class="full-only">
+                Anthropic API key
+                <input name="ANTHROPIC_API_KEY" type="password" autocomplete="new-password">
+              </label>
+              <label class="full-only">
+                OpenAI API key
+                <input name="OPENAI_API_KEY" type="password" autocomplete="new-password">
+              </label>
+              <label>
+                כתובת אימייל עבור Push
+                <input name="VAPID_SUBJECT" type="email" placeholder="you@example.com" required>
+              </label>
+              <label>
+                הגבלת כניסה, אופציונלי
+                <input name="WEB_ALLOWED_EMAILS" type="text" placeholder="you@example.com">
+                <small>השאירו ריק אם העותק מיועד לכמה
+                  משתמשים.</small>
+              </label>
+              <button class="primary" type="submit">
+                יצירת מפתחות ופריסת ה־Backend
+              </button>
+            </form>
+            <div class="manual-note" id="vault-action" hidden>
+              <strong>השלמת המשימות המתוזמנות</strong>
+              <p>
+                פתחו את SQL Editor, הריצו את
+                <code>supabase/.temp/self-host-vault.sql</code>
+                ומחקו את הקובץ לאחר מכן.
+              </p>
+              <a id="sql-editor-link" class="external-link" target="_blank" rel="noreferrer">
+                פתיחת SQL Editor
+              </a>
+              <button class="secondary" id="vault-done" type="button">
+                הרצתי את הקובץ
+              </button>
+            </div>
+          </section>
+
+          <section class="step-screen" data-step="7" hidden>
+            <p class="eyebrow">אינטגרציות Google</p>
+            <h1>Calendar, Drive וכניסה</h1>
+            <p class="intro">
+              זהו השלב הידני העיקרי. הכנו את הקישורים וכתובות
+              ההפניה המדויקות.
+            </p>
+            <div id="google-guidance" class="guidance-list"></div>
+            <div class="manual-note full-only">
+              <strong>הפעילו גם את Google Provider ב־Supabase</strong>
+              <p>
+                העתיקו לשם את אותו Client ID ואת אותו Client Secret.
+              </p>
+              <a
+                id="supabase-provider-link"
+                class="external-link"
+                target="_blank"
+                rel="noreferrer"
+              >
+                פתיחת ספקי Auth
+              </a>
+            </div>
+            <form id="google-form" class="field-grid full-only">
+              <label>
+                Google Client ID
+                <input name="GOOGLE_CLIENT_ID" autocomplete="off">
+              </label>
+              <label>
+                Google Client Secret
+                <input name="GOOGLE_CLIENT_SECRET" type="password" autocomplete="new-password">
+              </label>
+              <button class="primary" type="submit">שמירה והמשך לבדיקה</button>
+            </form>
+            <button class="text-button" id="skip-google" type="button">
+              דילוג על Google כרגע
+            </button>
+          </section>
+
+          <section class="step-screen" data-step="8" hidden>
+            <p class="eyebrow">בדיקות וסיום</p>
+            <h1>האם הכול באמת עובד?</h1>
+            <p class="intro">
+              האשף בודק את כתובת ה־PWA ואת ההגנה על ה־API לפני
+              שהוא מכריז שההתקנה הסתיימה.
+            </p>
+            <button class="primary" id="run-verification" type="button">
+              הרצת בדיקות סופיות
+            </button>
+            <div class="verification-list" id="verification-list"></div>
+            <div class="finish-panel" id="finish-panel" hidden>
+              <strong>תכלס שלכם באוויר</strong>
+              <p>
+                אפשר לפתוח את האפליקציה, להתקין אותה למסך הבית
+                ולהתחיל.
+              </p>
+              <div class="finish-links" id="finish-links"></div>
+            </div>
+          </section>
+
+          <div class="status" id="status" role="status" aria-live="polite">
+            מתחבר לשרת המקומי...
           </div>
-        </div>
 
-        <div class="status" id="status" role="status" aria-live="polite">
-          בודק את החיבור לשרת המקומי...
-        </div>
+          <details class="technical-details">
+            <summary>יומן טכני</summary>
+            <pre id="technical-log">עוד אין פלט להצגה.</pre>
+          </details>
 
-        <details>
-          <summary>מה האשף יעשה?</summary>
-          <ul>
-            <li>יבדוק את כלי הפיתוח במחשב.</li>
-            <li>יחבר Supabase ו־Vercel.</li>
-            <li>יגדיר את היכולות שבחרתם.</li>
-            <li>יוודא שהאפליקציה באמת עובדת.</li>
-          </ul>
-        </details>
-      </section>
-
-      <footer id="progress">Windows · שלב 1 מתוך 8</footer>
+          <div class="bottom-nav">
+            <button class="text-button" id="back-button" type="button">חזרה</button>
+            <span id="progress-label">שלב 1 מתוך 8</span>
+          </div>
+        </section>
+      </div>
     </main>
-
     <script src="/app.js" defer></script>
   </body>
 </html>

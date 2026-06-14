@@ -6,7 +6,32 @@ Telegram is optional. The standalone PWA supports email authentication, Push
 reminders, tasks, memories, and projects. Google, AI, Obsidian, and Telegram can
 be enabled separately.
 
-## Requirements
+## Recommended path: Windows setup wizard
+
+```powershell
+git clone https://github.com/tzvikahe-ops/tachles-open-source.git
+cd tachles-open-source
+.\Start-Tachles-Setup.cmd
+```
+
+The local Hebrew wizard binds only to `127.0.0.1`, keeps resumable state, and
+redacts secrets from its log. It checks prerequisites, prepares Supabase,
+deploys the PWA to Vercel, creates Push and internal secrets, configures optional
+AI and Google integrations, deploys the backend, and verifies the public app.
+
+The wizard intentionally leaves these provider-controlled actions manual:
+
+- Creating accounts and cloud projects.
+- Approving CLI sign-in in the browser.
+- Setting Supabase Auth Site URL and redirect URLs.
+- Running and deleting the generated Vault SQL file.
+- Enabling Google APIs, configuring the consent audience, and creating OAuth credentials.
+- Enabling the Google provider in Supabase Auth.
+
+The wizard opens the exact dashboard pages and supplies copy-ready values.
+The remainder of this document is the manual route and troubleshooting reference.
+
+## Requirements for the manual route
 
 - GitHub, Supabase, and Vercel accounts
 - Deno 2.x, Node.js 22+, npm 10+
@@ -18,8 +43,8 @@ be enabled separately.
 ## Install
 
 ```powershell
-git clone https://github.com/tzvikahe-ops/Tachles.git
-cd Tachles
+git clone https://github.com/tzvikahe-ops/tachles-open-source.git
+cd tachles-open-source
 Copy-Item .env.example .env.local
 Copy-Item apps/web-app/.env.example apps/web-app/.env
 npm --prefix apps/web-app ci
@@ -54,7 +79,7 @@ Set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and a `VAPID_SUBJECT` mailto value.
 
 ## Deploy the PWA shell
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftzvikahe-ops%2FTachles&root-directory=apps%2Fweb-app&env=VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,VITE_API_BASE)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftzvikahe-ops%2Ftachles-open-source&root-directory=apps%2Fweb-app&env=VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,VITE_API_BASE)
 
 Use `apps/web-app` as the root directory, Vite as the framework, `npm run build`
 as the build command, and `dist` as the output directory. Add the three

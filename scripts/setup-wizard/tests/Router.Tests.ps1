@@ -23,4 +23,35 @@ if ($null -ne (Get-SetupActionDefinition -Name "local_check; whoami")) {
   throw "Command-like action name was accepted."
 }
 
+$wizardRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+foreach ($name in @(
+    "install_git",
+    "install_node",
+    "install_deno",
+    "install_vercel",
+    "prepare_supabase",
+    "validate_ai",
+    "generate_secrets",
+    "deploy_supabase",
+    "deploy_vercel",
+    "deploy_google"
+  )) {
+  $action = Get-SetupActionDefinition `
+    -Name $name `
+    -WorkspaceRoot "C:\setup-target" `
+    -WizardRoot $wizardRoot
+  Assert-Equal $name $action.Name "Allowlisted action is missing."
+  Assert-Equal "powershell.exe" $action.FilePath "Action host is wrong."
+  if ($action.CompletionStatus -notin @(
+      "pending",
+      "needs_user_action",
+      "succeeded"
+    )) {
+    throw "Action completion status is invalid."
+  }
+  if (($action.Arguments -join " ").Contains(";")) {
+    throw "Action arguments contain a shell separator."
+  }
+}
+
 Write-Host "Router.Tests.ps1 passed"

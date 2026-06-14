@@ -72,6 +72,15 @@ try {
     "Content-Type" = "application/json"
   }
 
+  $page = Invoke-WebRequest `
+    -Method Get `
+    -Uri "http://127.0.0.1:$port/" `
+    -UseBasicParsing
+  Assert-True ($page.StatusCode -eq 200) "Wizard page did not load."
+  Assert-True (
+    $page.Content.Contains('data-step="8"')
+  ) "Wizard page does not contain all eight steps."
+
   $state = Invoke-RestMethod `
     -Method Post `
     -Uri "http://127.0.0.1:$port/api/state" `
@@ -104,6 +113,48 @@ try {
     ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }
   Assert-True (-not $stateText.Contains($fakeSecret)) "State file contains a secret."
   Assert-True (-not (($logs -join "`n").Contains($fakeSecret))) "Log contains a secret."
+
+  $configBody = @{
+    SUPABASE_PROJECT_REF = "abcdefghijklmnopqrst"
+    VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test"
+    WEB_APP_URL = "https://tachles-test.vercel.app"
+    VAPID_SUBJECT = "mailto:test@example.com"
+  } | ConvertTo-Json -Compress
+  Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://127.0.0.1:$port/api/config" `
+    -Headers $headers `
+    -Body $configBody |
+    Out-Null
+  $config = Invoke-RestMethod `
+    -Method Get `
+    -Uri "http://127.0.0.1:$port/api/config" `
+    -Headers $headers
+  Assert-True (
+    $config.SUPABASE_PROJECT_REF -eq "abcdefghijklmnopqrst"
+  ) "Public configuration was not persisted."
+
+  $invalidConfigRejected = $false
+  try {
+    Invoke-RestMethod `
+      -Method Post `
+      -Uri "http://127.0.0.1:$port/api/config" `
+      -Headers $headers `
+      -Body '{"WEB_APP_URL":"javascript:alert(1)"}' |
+      Out-Null
+  } catch {
+    $invalidConfigRejected = $_.Exception.Response.StatusCode.value__ -eq 400
+  }
+  Assert-True $invalidConfigRejected "Unsafe configuration URL was accepted."
+
+  $google = Invoke-RestMethod `
+    -Method Get `
+    -Uri "http://127.0.0.1:$port/api/google" `
+    -Headers $headers
+  Assert-True (
+    $google.authRedirect -eq
+      "https://abcdefghijklmnopqrst.supabase.co/auth/v1/callback"
+  ) "Google guidance returned the wrong redirect."
 
   $action = Invoke-RestMethod `
     -Method Post `
