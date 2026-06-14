@@ -2268,12 +2268,13 @@ main {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
 }
 
 .metric-grid > div {
   display: grid;
+  min-width: 0;
   gap: 3px;
   padding: 12px;
   border-radius: 12px;
@@ -2455,14 +2456,32 @@ main {
   font-size: 11px;
 }
 
+@media (max-width: 430px) {
+  .tool-health-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr);
+  }
+
+  .tool-health-form button {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 370px) {
   .form-grid {
     grid-template-columns: 1fr;
   }
 
   .tool-inline-form,
-  .tool-health-form,
   .share-form {
     flex-direction: column;
+  }
+
+  .tool-health-form {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-health-form button {
+    grid-column: auto;
   }
 }
