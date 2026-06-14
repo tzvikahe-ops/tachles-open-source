@@ -18,3 +18,4 @@ apps/web-app/vite.err.log
 coverage/
 .superpowers/
 .codex/
+.tachles-setup/

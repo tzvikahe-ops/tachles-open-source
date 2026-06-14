@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>התקנת תכלס</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand">
+        <span class="brand-mark" aria-hidden="true">+</span>
+        <span>תכלס</span>
+      </header>
+
+      <section class="wizard-card" aria-labelledby="welcome-title">
+        <p class="eyebrow">אשף התקנה מקומי</p>
+        <h1 id="welcome-title">בואו נקים את תכלס שלכם</h1>
+        <p class="intro">
+          האשף יוביל אתכם צעד אחר צעד עד לאפליקציית PWA עצמאית בחשבונות שלכם.
+        </p>
+
+        <div class="privacy-note">
+          <span class="privacy-icon" aria-hidden="true">✓</span>
+          <div>
+            <strong>המפתחות נשארים במחשב הזה</strong>
+            <p>השרת פועל מקומית בלבד ואינו שולח סודות לאתר של תכלס.</p>
+          </div>
+        </div>
+
+        <div class="status" id="status" role="status" aria-live="polite">
+          בודק את החיבור לשרת המקומי...
+        </div>
+
+        <button class="primary" id="start-button" type="button" disabled>
+          מתחילים
+        </button>
+
+        <details>
+          <summary>מה האשף יעשה?</summary>
+          <ul>
+            <li>יבדוק את כלי הפיתוח במחשב.</li>
+            <li>יחבר Supabase ו־Vercel.</li>
+            <li>יגדיר את היכולות שבחרתם.</li>
+            <li>יוודא שהאפליקציה באמת עובדת.</li>
+          </ul>
+        </details>
+      </section>
+
+      <footer>Windows · גרסת תשתית ראשונית</footer>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

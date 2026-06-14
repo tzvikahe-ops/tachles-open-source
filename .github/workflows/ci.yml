@@ -57,3 +57,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm audit --audit-level=high
+
+  setup-wizard:
+    name: Setup Wizard
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - shell: powershell
+        run: |
+          powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
+            -File scripts/setup-wizard/tests/Run-Tests.ps1
