@@ -14,32 +14,54 @@
         <span>תכלס</span>
       </header>
 
-      <section class="wizard-card" aria-labelledby="welcome-title">
-        <p class="eyebrow">אשף התקנה מקומי</p>
-        <h1 id="welcome-title">בואו נקים את תכלס שלכם</h1>
-        <!-- deno-fmt-ignore -->
-        <p class="intro">
-          האשף יוביל אתכם צעד אחר צעד עד לאפליקציית PWA עצמאית בחשבונות שלכם.
-        </p>
+      <section class="wizard-card" aria-label="אשף ההתקנה של תכלס">
+        <div id="welcome-screen">
+          <p class="eyebrow">אשף התקנה מקומי</p>
+          <h1 id="welcome-title">בואו נקים את תכלס שלכם</h1>
+          <!-- deno-fmt-ignore -->
+          <p class="intro">
+            האשף יוביל אתכם צעד אחר צעד עד לאפליקציית PWA עצמאית בחשבונות שלכם.
+          </p>
 
-        <div class="privacy-note">
-          <span class="privacy-icon" aria-hidden="true">✓</span>
-          <div>
-            <strong>המפתחות נשארים במחשב הזה</strong>
-            <!-- deno-fmt-ignore -->
-            <p>
-              השרת פועל מקומית בלבד ואינו שולח סודות לאתר של תכלס.
-            </p>
+          <div class="privacy-note">
+            <span class="privacy-icon" aria-hidden="true">✓</span>
+            <div>
+              <strong>המפתחות נשארים במחשב הזה</strong>
+              <!-- deno-fmt-ignore -->
+              <p>
+                השרת פועל מקומית בלבד ואינו שולח סודות לאתר של תכלס.
+              </p>
+            </div>
+          </div>
+
+          <button class="primary" id="start-button" type="button" disabled>
+            מתחילים
+          </button>
+        </div>
+
+        <div id="mode-screen" hidden>
+          <p class="eyebrow" id="mode-eyebrow">שלב 2 מתוך 8</p>
+          <h1 id="mode-title">איך תרצו להתקין?</h1>
+          <p class="intro" id="mode-intro">
+            אפשר להוסיף יכולות נוספות גם לאחר ההתקנה.
+          </p>
+
+          <div class="mode-options">
+            <button class="mode-card" data-mode="full" type="button">
+              <span class="recommended">מומלץ</span>
+              <strong>התקנה מלאה</strong>
+              <span>AI, קול, Push, Google Calendar, Drive ו־Obsidian.</span>
+            </button>
+            <button class="mode-card" data-mode="basic" type="button">
+              <strong>התקנה בסיסית</strong>
+              <span>משימות, רשימות, זיכרונות, פרויקטים ותזכורות ידניות.</span>
+            </button>
           </div>
         </div>
 
         <div class="status" id="status" role="status" aria-live="polite">
           בודק את החיבור לשרת המקומי...
         </div>
-
-        <button class="primary" id="start-button" type="button" disabled>
-          מתחילים
-        </button>
 
         <details>
           <summary>מה האשף יעשה?</summary>
@@ -52,7 +74,7 @@
         </details>
       </section>
 
-      <footer>Windows · גרסת תשתית ראשונית</footer>
+      <footer id="progress">Windows · שלב 1 מתוך 8</footer>
     </main>
 
     <script src="/app.js" defer></script>

@@ -1,6 +1,8 @@
 Set-StrictMode -Version Latest
 
 Import-Module (Join-Path $PSScriptRoot "Security.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\core\StateStore.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\core\EnvStore.psm1") -Force
 
 $script:ShouldStop = $false
 
@@ -220,7 +222,13 @@ function Invoke-SetupRequest {
     [int]$Port,
 
     [Parameter(Mandatory = $true)]
-    [string]$UiRoot
+    [string]$UiRoot,
+
+    [Parameter(Mandatory = $true)]
+    [object]$Paths,
+
+    [Parameter(Mandatory = $true)]
+    [string]$EnvPath
   )
 
   $uri = [Uri]::new("http://127.0.0.1:$Port$($Request.Target)")
@@ -251,6 +259,104 @@ function Invoke-SetupRequest {
           platform = "windows"
           version = 1
         } `
+        -Headers $corsHeaders
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/state") {
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value (Read-SetupState -StatePath $Paths.StatePath) `
+        -Headers $corsHeaders
+      return
+    }
+
+    if ($Request.Method -eq "POST" -and $path -eq "/api/state") {
+      try {
+        $body = $Request.Body | ConvertFrom-Json
+        $changes = @{}
+        if ($body.PSObject.Properties.Name -contains "activeStep") {
+          $changes["activeStep"] = [int]$body.activeStep
+        }
+        if ($body.PSObject.Properties.Name -contains "installMode") {
+          $changes["installMode"] = [string]$body.installMode
+        }
+        $state = Update-SetupState -StatePath $Paths.StatePath -Changes $changes
+        Write-SetupLogEntry -LogsRoot $Paths.LogsRoot -Message "Setup state updated."
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 200 `
+          -StatusText "OK" `
+          -Value $state `
+          -Headers $corsHeaders
+      } catch {
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 400 `
+          -StatusText "Bad Request" `
+          -Value @{ error = "invalid_state" } `
+          -Headers $corsHeaders
+      }
+      return
+    }
+
+    if ($Request.Method -eq "POST" -and $path -eq "/api/secret") {
+      $allowedSecrets = @(
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "VAPID_SUBJECT",
+        "VAPID_PUBLIC_KEY",
+        "VAPID_PRIVATE_KEY"
+      )
+
+      try {
+        $body = $Request.Body | ConvertFrom-Json
+        $name = [string]$body.name
+        $value = [string]$body.value
+        if ($name -notin $allowedSecrets -or [string]::IsNullOrWhiteSpace($value)) {
+          throw "Invalid secret."
+        }
+        Set-SetupEnvValue -EnvPath $EnvPath -Name $name -Value $value
+        Write-SetupLogEntry `
+          -LogsRoot $Paths.LogsRoot `
+          -Message "Secret $name configured." `
+          -Secrets @($value)
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 200 `
+          -StatusText "OK" `
+          -Value @{ name = $name; configured = $true } `
+          -Headers $corsHeaders
+      } catch {
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 400 `
+          -StatusText "Bad Request" `
+          -Value @{ error = "invalid_secret" } `
+          -Headers $corsHeaders
+      }
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/secrets") {
+      $names = @(
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "VAPID_SUBJECT",
+        "VAPID_PUBLIC_KEY",
+        "VAPID_PRIVATE_KEY"
+      )
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value (Get-SetupSecretStatus -EnvPath $EnvPath -Names $names) `
         -Headers $corsHeaders
       return
     }
@@ -314,10 +420,16 @@ function Start-SetupServer {
     [string]$Token,
 
     [Parameter(Mandatory = $true)]
-    [string]$UiRoot
+    [string]$UiRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$WorkspaceRoot
   )
 
   $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
+  $paths = Initialize-SetupDataDirectory -WorkspaceRoot $WorkspaceRoot
+  $envPath = Join-Path $WorkspaceRoot ".env.local"
+  Read-SetupState -StatePath $paths.StatePath | Out-Null
   $script:ShouldStop = $false
   $listener.Start()
 
@@ -333,7 +445,9 @@ function Start-SetupServer {
           -Request $request `
           -Token $Token `
           -Port $Port `
-          -UiRoot $UiRoot
+          -UiRoot $UiRoot `
+          -Paths $paths `
+          -EnvPath $envPath
       } catch {
         if ($null -ne $stream) {
           try {
