@@ -43,9 +43,9 @@ Start-Tachles-Setup.cmd
 כערוצי שימוש נוספים ועוברים דרך אותם שירותים ומסד נתונים.
 
 ב־PWA אפשר להשתמש בלי להגדיר בוט Telegram: הזנה חופשית בטקסט או בקול, תזכורות
-Push, יומן Google, משימות ותתי־משימות, רשימות, זיכרונות וקבצים, חילוץ פעולות
-מתמונה, פרויקטים ותוכניות ביצוע, בריאות, סוכנים פרואקטיביים, חיפוש מקומי וב־Drive,
-ציר זמן, תצלומי מצב, שיתוף בין חברים וסנכרון Obsidian.
+Push, יומן Google, משימות ותתי־משימות, רשימות, זיכרונות וקבצים, פרויקטים
+ותוכניות ביצוע, בריאות, סוכנים פרואקטיביים, חיפוש מקומי וב־Drive, ציר זמן,
+תצלומי מצב, שיתוף בין חברים וסנכרון Obsidian.
 
 ## הצצה לאפליקציה
 
@@ -87,8 +87,8 @@ Supabase ו-Vercel משלכם. Telegram אופציונלי; יכולות AI ו-G
 - **אפליקציה עצמאית:** React 19 + Vite, ממשק RTL, PWA ו-Web Share Target; פריסה ב-Vercel.
 - **הזדהות:** Supabase Auth עם Google או magic link, וקישור אופציונלי לפרופיל Telegram קיים.
 - **תזמון:** `pg_cron` + `pg_net` מפעילים ארבע פונקציות מתוזמנות (תזכורות / יומן / סוכנים / תצלומים).
-- **פענוח עברית (כוונה, תאריכים, חילוץ):** Anthropic Claude עם structured tool-use, כולל Claude Vision
-  ל-OCR ולחילוץ פעולות מתמונות.
+- **פענוח עברית (כוונה, תאריכים, חילוץ):** Anthropic Claude עם structured tool-use,
+  כולל Claude Vision ל-OCR. חילוץ פעולות מתמונות קיים כיכולת ניסיונית.
 - **חיפוש:** trigram (`pg_trgm`) + חיפוש סמנטי (embeddings של OpenAI ב-`pgvector`).
 - **קול:** תמלול הקלטות דרך OpenAI.
 - **חזרתיות:** מחרוזות `RRULE` (iCal) עם `rrule.js`, מעוגנות לשעת קיר מקומית (תקין גם במעבר שעון/DST).
@@ -244,7 +244,7 @@ scripts/
 | המעיין      | `/remember` (`/save`) · `/recall` (`/search`) · `/memories` · `/knowledge` · `/inspiration` · `/reflection` · `/types` |
 | משימות      | `/tasks` · `/task <כותרת>` · `/subtask <כותרת>`                                 |
 | יומן Google | `/connect [drive]` · `/disconnect` · `/today` · `/events` (עריכה/דחייה/מחיקה) · `/summary on 07:00 \| off` |
-| Drive       | `/drive <ביטוי>` · תמונה + caption `/extract` (Image-to-Action)                 |
+| Drive       | `/drive <ביטוי>` · תמונה + caption `/extract` (ניסיוני)                        |
 | Obsidian    | `/obsidian on \| off \| sync \| status`                                          |
 | חברים/שיתוף | `/invite` · `/friends` · `/share ...` · `/shared`                               |
 | אינטליגנציה | `/inbox` · `/timeline <תקופה>` · `/agents [enable\|disable <name>]` · `/health` |
@@ -264,8 +264,8 @@ scripts/
 שכפול והתקנה:
 
 ```bash
-git clone https://github.com/tzvikahe-ops/Tachles.git
-cd Tachles
+git clone https://github.com/tzvikahe-ops/tachles-open-source.git
+cd tachles-open-source
 cp .env.example .env.local
 
 cd apps/web-app
@@ -477,7 +477,7 @@ npm run check                   # type-check (svelte-check)
 - [x] **שלב 4** — F2F: `invites` (deep-link `?start=inv_<token>`), `f2f_links`, `shares`
       ברמת resource (list / task / bubble / reminder), פקודות `/invite`, `/friends`,
       `/share`, `/shared`. ללא RLS מורחב — service-role + בדיקה בקוד.
-- [x] **שלב 5** — Google Drive search (`/drive`) + Image-to-Action (תמונה + caption
+- [x] **שלב 5** — Google Drive search (`/drive`) + Image-to-Action ניסיוני (תמונה + caption
       `/extract` → tasks/list_items חולצים דרך Claude Vision).
 - [x] **Obsidian sync** — ייצוא בועות / משימות / סיכומים כ-markdown לתיקיית `Tachles` ב-Drive
       (`/obsidian on|off|sync|status`), עם מיפוי קבצים לעדכון/מחיקה במקום כפילויות.
@@ -509,7 +509,6 @@ npm run check                   # type-check (svelte-check)
 - הנחיות לפיתוח ו-Pull Requests: [CONTRIBUTING.md](CONTRIBUTING.md)
 - דיווח פרטי על חולשות: [SECURITY.md](SECURITY.md)
 - כללי התנהגות בקהילה: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- דוח ההכנה לפרסום: [docs/open-source-readiness-report.md](docs/open-source-readiness-report.md)
 
 ## יוצר ומתחזק
 
