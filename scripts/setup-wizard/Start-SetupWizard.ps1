@@ -1,11 +1,15 @@
 [CmdletBinding()]
 param(
   [switch]$NoBrowser,
-  [int]$Port = 0
+  [int]$Port = 0,
+  [string]$WorkspaceRoot = ""
 )
 
 $ErrorActionPreference = "Stop"
 $wizardRoot = $PSScriptRoot
+if ([string]::IsNullOrWhiteSpace($WorkspaceRoot)) {
+  $WorkspaceRoot = Split-Path -Parent (Split-Path -Parent $wizardRoot)
+}
 $serverModule = Join-Path $wizardRoot "server\SetupServer.psm1"
 $messagesPath = Join-Path $wizardRoot "messages.he.json"
 $messages = Get-Content -LiteralPath $messagesPath -Raw -Encoding UTF8 |
@@ -32,6 +36,7 @@ try {
     Port = $session.Port
     Token = $session.Token
     UiRoot = Join-Path $wizardRoot "ui"
+    WorkspaceRoot = $WorkspaceRoot
   }
   Start-SetupServer @serverParameters
 } catch {

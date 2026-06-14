@@ -123,9 +123,65 @@ h1 {
   font-size: 14px;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .status[data-state="ready"] {
   color: var(--teal);
   font-weight: 700;
+}
+
+.mode-options {
+  display: grid;
+  gap: 14px;
+  margin: 26px 0 8px;
+}
+
+.mode-card {
+  position: relative;
+  display: grid;
+  min-height: 112px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--raised);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: right;
+}
+
+.mode-card:hover,
+.mode-card[data-selected="true"] {
+  border-color: var(--teal);
+  box-shadow: 0 8px 22px rgba(47, 127, 130, 0.12);
+}
+
+.mode-card:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.mode-card strong {
+  margin-bottom: 8px;
+  font-size: 20px;
+}
+
+.mode-card span:not(.recommended) {
+  color: var(--soft);
+  line-height: 1.5;
+}
+
+.recommended {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--teal-soft);
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .status[data-state="error"] {
