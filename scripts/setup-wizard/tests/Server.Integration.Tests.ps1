@@ -105,6 +105,53 @@ try {
   Assert-True (-not $stateText.Contains($fakeSecret)) "State file contains a secret."
   Assert-True (-not (($logs -join "`n").Contains($fakeSecret))) "Log contains a secret."
 
+  $action = Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://127.0.0.1:$port/api/action/local_check" `
+    -Headers $headers
+  Assert-True ($action.status -eq "running") "Action endpoint did not start."
+
+  $action = $null
+  for ($attempt = 0; $attempt -lt 100; $attempt++) {
+    Start-Sleep -Milliseconds 50
+    $action = Invoke-RestMethod `
+      -Method Get `
+      -Uri "http://127.0.0.1:$port/api/action" `
+      -Headers $headers
+    if ($action.status -ne "running") {
+      break
+    }
+  }
+  Assert-True ($action.status -eq "succeeded") "Action endpoint did not succeed."
+
+  $logResponse = Invoke-RestMethod `
+    -Method Get `
+    -Uri "http://127.0.0.1:$port/api/log" `
+    -Headers $headers
+  Assert-True (
+    $logResponse.content.Contains("Local setup check completed.")
+  ) "Action output was not available through the log endpoint."
+
+  $persistedState = Invoke-RestMethod `
+    -Method Get `
+    -Uri "http://127.0.0.1:$port/api/state" `
+    -Headers $headers
+  Assert-True (
+    $persistedState.steps.prerequisites -eq "succeeded"
+  ) "Action result was not persisted in setup state."
+
+  $unknownRejected = $false
+  try {
+    Invoke-RestMethod `
+      -Method Post `
+      -Uri "http://127.0.0.1:$port/api/action/not_allowed" `
+      -Headers $headers |
+      Out-Null
+  } catch {
+    $unknownRejected = $_.Exception.Response.StatusCode.value__ -eq 404
+  }
+  Assert-True $unknownRejected "Unknown action was not rejected."
+
   Invoke-RestMethod `
     -Method Post `
     -Uri "http://127.0.0.1:$port/api/shutdown" `

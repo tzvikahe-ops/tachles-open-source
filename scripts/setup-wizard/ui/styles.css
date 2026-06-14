@@ -184,6 +184,54 @@ h1 {
   font-weight: 800;
 }
 
+.action-panel {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--raised);
+}
+
+.action-panel > p {
+  margin: 8px 0 16px;
+  color: var(--soft);
+  line-height: 1.55;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.action-buttons .primary {
+  flex: 1;
+}
+
+.secondary {
+  min-height: 52px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: transparent;
+  color: var(--terracotta);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+pre {
+  max-height: 190px;
+  overflow: auto;
+  margin: 14px 0 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: #172b3e;
+  color: #eef5f4;
+  direction: ltr;
+  font: 12px/1.55 Consolas, monospace;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
 .status[data-state="error"] {
   color: var(--terracotta);
   font-weight: 700;

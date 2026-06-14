@@ -1,8 +1,10 @@
 Set-StrictMode -Version Latest
 
 Import-Module (Join-Path $PSScriptRoot "Security.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "Router.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "..\core\StateStore.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "..\core\EnvStore.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\core\ProcessRunner.psm1") -Force
 
 $script:ShouldStop = $false
 
@@ -207,6 +209,16 @@ function Test-ApiRequest {
     (Test-SetupOrigin -Origin $origin -Port $Port)
 }
 
+function Get-SetupRedactionSecrets {
+  param([Parameter(Mandatory = $true)][string]$EnvPath)
+
+  $values = Read-SetupEnv -EnvPath $EnvPath
+  return @(
+    $values.Values |
+      Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+  )
+}
+
 function Invoke-SetupRequest {
   param(
     [Parameter(Mandatory = $true)]
@@ -228,7 +240,10 @@ function Invoke-SetupRequest {
     [object]$Paths,
 
     [Parameter(Mandatory = $true)]
-    [string]$EnvPath
+    [string]$EnvPath,
+
+    [Parameter(Mandatory = $true)]
+    [object]$Runner
   )
 
   $uri = [Uri]::new("http://127.0.0.1:$Port$($Request.Target)")
@@ -361,7 +376,116 @@ function Invoke-SetupRequest {
       return
     }
 
+    if ($Request.Method -eq "POST" -and $path.StartsWith("/api/action/")) {
+      $actionName = $path.Substring("/api/action/".Length)
+      if ($actionName -eq "cancel") {
+        $wasRunning = $Runner.Status -eq "running"
+        $action = Stop-SetupProcess `
+          -Runner $Runner `
+          -LogsRoot $Paths.LogsRoot `
+          -Secrets (Get-SetupRedactionSecrets -EnvPath $EnvPath)
+        if ($wasRunning -and
+          -not [string]::IsNullOrWhiteSpace($Runner.Step)) {
+          Set-SetupStepStatus `
+            -StatePath $Paths.StatePath `
+            -Step $Runner.Step `
+            -Status "failed" |
+            Out-Null
+          $Runner.StateApplied = $true
+        }
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 200 `
+          -StatusText "OK" `
+          -Value $action `
+          -Headers $corsHeaders
+        return
+      }
+
+      $definition = Get-SetupActionDefinition -Name $actionName
+      if ($null -eq $definition) {
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 404 `
+          -StatusText "Not Found" `
+          -Value @{ error = "unknown_action" } `
+          -Headers $corsHeaders
+        return
+      }
+
+      try {
+        $action = Start-SetupProcess -Runner $Runner -Definition $definition
+        Set-SetupStepStatus `
+          -StatePath $Paths.StatePath `
+          -Step $definition.Step `
+          -Status "running" |
+          Out-Null
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 202 `
+          -StatusText "Accepted" `
+          -Value $action `
+          -Headers $corsHeaders
+      } catch {
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 409 `
+          -StatusText "Conflict" `
+          -Value @{ error = "action_running" } `
+          -Headers $corsHeaders
+      }
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/action") {
+      $action = Update-SetupProcessRunner `
+        -Runner $Runner `
+        -LogsRoot $Paths.LogsRoot `
+        -Secrets (Get-SetupRedactionSecrets -EnvPath $EnvPath)
+      if ($Runner.Status -in @("succeeded", "failed") -and
+        -not $Runner.StateApplied -and
+        -not [string]::IsNullOrWhiteSpace($Runner.Step)) {
+        Set-SetupStepStatus `
+          -StatePath $Paths.StatePath `
+          -Step $Runner.Step `
+          -Status $Runner.Status |
+          Out-Null
+        $Runner.StateApplied = $true
+      }
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value $action `
+        -Headers $corsHeaders
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/log") {
+      $latest = Get-ChildItem -LiteralPath $Paths.LogsRoot -File |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1
+      $content = if ($null -eq $latest) {
+        ""
+      } else {
+        $lines = @(Get-Content -LiteralPath $latest.FullName -Encoding UTF8)
+        ($lines | Select-Object -Last 200) -join [Environment]::NewLine
+      }
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value @{ content = $content } `
+        -Headers $corsHeaders
+      return
+    }
+
     if ($Request.Method -eq "POST" -and $path -eq "/api/shutdown") {
+      Stop-SetupProcess `
+        -Runner $Runner `
+        -LogsRoot $Paths.LogsRoot `
+        -Secrets (Get-SetupRedactionSecrets -EnvPath $EnvPath) |
+        Out-Null
       $script:ShouldStop = $true
       Write-JsonResponse `
         -Stream $Stream `
@@ -429,6 +553,7 @@ function Start-SetupServer {
   $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
   $paths = Initialize-SetupDataDirectory -WorkspaceRoot $WorkspaceRoot
   $envPath = Join-Path $WorkspaceRoot ".env.local"
+  $runner = New-SetupProcessRunner -RuntimeRoot $paths.RuntimeRoot
   Read-SetupState -StatePath $paths.StatePath | Out-Null
   $script:ShouldStop = $false
   $listener.Start()
@@ -447,7 +572,8 @@ function Start-SetupServer {
           -Port $Port `
           -UiRoot $UiRoot `
           -Paths $paths `
-          -EnvPath $envPath
+          -EnvPath $envPath `
+          -Runner $runner
       } catch {
         if ($null -ne $stream) {
           try {
@@ -468,6 +594,11 @@ function Start-SetupServer {
       }
     }
   } finally {
+    Stop-SetupProcess `
+      -Runner $runner `
+      -LogsRoot $paths.LogsRoot `
+      -Secrets (Get-SetupRedactionSecrets -EnvPath $envPath) |
+      Out-Null
     $listener.Stop()
   }
 }

@@ -8,13 +8,15 @@ function Initialize-SetupDataDirectory {
 
   $dataRoot = Join-Path $WorkspaceRoot ".tachles-setup"
   $logsRoot = Join-Path $dataRoot "logs"
+  $runtimeRoot = Join-Path $dataRoot "runtime"
 
-  New-Item -ItemType Directory -Path $logsRoot -Force | Out-Null
+  New-Item -ItemType Directory -Path $logsRoot, $runtimeRoot -Force | Out-Null
   Protect-SetupPath -Path $dataRoot
 
   return [pscustomobject]@{
     DataRoot = $dataRoot
     LogsRoot = $logsRoot
+    RuntimeRoot = $runtimeRoot
     StatePath = Join-Path $dataRoot "state.json"
   }
 }
@@ -138,6 +140,35 @@ function Update-SetupState {
   return Read-SetupState -StatePath $StatePath
 }
 
+function Set-SetupStepStatus {
+  param(
+    [Parameter(Mandatory = $true)][string]$StatePath,
+    [Parameter(Mandatory = $true)][string]$Step,
+    [Parameter(Mandatory = $true)][string]$Status
+  )
+
+  if ($Step -notin @(
+      "welcome",
+      "mode",
+      "prerequisites",
+      "supabase",
+      "vercel",
+      "capabilities",
+      "google",
+      "verification"
+    )) {
+    throw "Unsupported setup step."
+  }
+  if (-not (Test-SetupActionStatus -Status $Status)) {
+    throw "Unsupported setup action status."
+  }
+
+  $state = Read-SetupState -StatePath $StatePath
+  $state.steps.$Step = $Status
+  Write-SetupState -StatePath $StatePath -State $state
+  return Read-SetupState -StatePath $StatePath
+}
+
 function Write-SetupLogEntry {
   param(
     [Parameter(Mandatory = $true)][string]$LogsRoot,
@@ -163,4 +194,5 @@ Export-ModuleMember -Function `
   Read-SetupState, `
   Write-SetupState, `
   Update-SetupState, `
+  Set-SetupStepStatus, `
   Write-SetupLogEntry
