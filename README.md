@@ -12,6 +12,10 @@
 **התקנה עצמית:** [מדריך בעברית](SELF_HOSTING.md) ·
 [English guide](SELF_HOSTING.en.md)
 
+<p align="center">
+  <img src="docs/screenshots/pwa-home.png" alt="מסך הבית של אפליקציית תכלס" width="390">
+</p>
+
 - **המעיין (The Wellspring)** — שכבת ה_זיכרון_. ידע, השראה והרהורים כ"בועות זיכרון".
 - **הגשר (The Bridge)** — שכבת ה_פעולה_. תזכורות, רשימות, לוחות זמנים ומשימות.
 
@@ -25,6 +29,23 @@
 Push, יומן Google, משימות ותתי־משימות, רשימות, זיכרונות וקבצים, חילוץ פעולות
 מתמונה, פרויקטים ותוכניות ביצוע, בריאות, סוכנים פרואקטיביים, חיפוש מקומי וב־Drive,
 ציר זמן, תצלומי מצב, שיתוף בין חברים וסנכרון Obsidian.
+
+## הצצה לאפליקציה
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/pwa-projects.png" alt="מסך הפרויקטים" width="270"></td>
+    <td align="center"><img src="docs/screenshots/pwa-memory.png" alt="מסך הזיכרון" width="270"></td>
+    <td align="center"><img src="docs/screenshots/pwa-semantic-search.png" alt="מסך החיפוש הסמנטי" width="270"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>פרויקטים ותוכניות ביצוע</strong></td>
+    <td align="center"><strong>זיכרון אישי חכם</strong></td>
+    <td align="center"><strong>חיפוש סמנטי משולב</strong></td>
+  </tr>
+</table>
+
+הצילומים נלקחו ממצב ההדגמה של האפליקציה ואינם מכילים מידע אישי.
 
 הפרויקט מופץ כקוד פתוח וכל היכולות זמינות לכל משתמש, ללא תוכניות תשלום,
 תקופת ניסיון או הגבלת פיצ'רים. שיתוף בין חברים הוא ממשק רב-המשתמשים היחיד בחשבון.
