@@ -42,6 +42,7 @@ function New-SetupProcessRunner {
     Status = "idle"
     Name = $null
     Step = $null
+    CompletionStatus = "succeeded"
     Process = $null
     ProcessHandle = [IntPtr]::Zero
     StdoutPath = $null
@@ -66,6 +67,7 @@ function Get-SetupProcessPublicState {
     completedAt = $Runner.CompletedAt
     exitCode = $Runner.ExitCode
     message = $Runner.Message
+    stepStatus = $Runner.CompletionStatus
   }
 }
 
@@ -157,6 +159,13 @@ function Start-SetupProcess {
   $Runner.Status = "running"
   $Runner.Name = $Definition.Name
   $Runner.Step = $Definition.Step
+  $Runner.CompletionStatus = if (
+    $Definition.PSObject.Properties.Name -contains "CompletionStatus"
+  ) {
+    $Definition.CompletionStatus
+  } else {
+    "succeeded"
+  }
   $Runner.Process = $process
   $Runner.ProcessHandle = $process.Handle
   $Runner.StdoutPath = $stdoutPath

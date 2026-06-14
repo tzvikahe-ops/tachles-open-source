@@ -3,8 +3,7 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$ProjectRef,
 
-  [Parameter(Mandatory = $true)]
-  [string]$DatabasePassword,
+  [string]$DatabasePassword = "",
 
   [string]$EnvFile = ".env.local",
 
@@ -16,11 +15,34 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $envPath = Join-Path $repoRoot $EnvFile
 $tempDir = Join-Path $repoRoot "supabase\.temp"
 $vaultFile = Join-Path $tempDir "self-host-vault.sql"
+$secretFile = Join-Path $tempDir "self-host-secrets.env"
 
 function Require-Command([string]$Name) {
   if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
     throw "Missing required command: $Name"
   }
+}
+
+function Invoke-Supabase([string[]]$Arguments) {
+  if (Get-Command "supabase" -ErrorAction SilentlyContinue) {
+    & supabase @Arguments
+  } else {
+    & npx.cmd --yes supabase @Arguments
+  }
+}
+
+function Protect-SecretFile([string]$Path) {
+  $icacls = Get-Command "icacls.exe" -ErrorAction SilentlyContinue
+  if ($null -eq $icacls) {
+    return
+  }
+  $identity = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+  & $icacls.Source `
+    $Path `
+    "/inheritance:r" `
+    "/grant:r" `
+    "${identity}:F" |
+    Out-Null
 }
 
 function Read-DotEnv([string]$Path) {
@@ -36,21 +58,28 @@ function Read-DotEnv([string]$Path) {
   return $values
 }
 
-Require-Command "supabase"
 Require-Command "deno"
 Require-Command "npm"
+Require-Command "npx.cmd"
 
 if (-not (Test-Path -LiteralPath $envPath)) {
   throw "Environment file not found: $envPath"
 }
 
 $values = Read-DotEnv $envPath
+$resolvedDatabasePassword = if (
+  -not [string]::IsNullOrWhiteSpace($DatabasePassword)
+) {
+  $DatabasePassword
+} else {
+  [string]$values["SUPABASE_DB_PASSWORD"]
+}
+if ([string]::IsNullOrWhiteSpace($resolvedDatabasePassword)) {
+  throw "Missing required value: SUPABASE_DB_PASSWORD"
+}
 $required = @(
-  "WEB_APP_URL",
   "PROFILE_LINK_SECRET",
   "DISPATCH_SECRET",
-  "ANTHROPIC_API_KEY",
-  "OPENAI_API_KEY",
   "VAPID_SUBJECT",
   "VAPID_PUBLIC_KEY",
   "VAPID_PRIVATE_KEY"
@@ -61,13 +90,15 @@ if ($missing.Count -gt 0) {
 }
 
 Push-Location $repoRoot
+$previousDatabasePassword = $env:SUPABASE_DB_PASSWORD
+$env:SUPABASE_DB_PASSWORD = $resolvedDatabasePassword
 try {
   Write-Host "Linking Supabase project..."
-  & supabase link --project-ref $ProjectRef
+  Invoke-Supabase @("link", "--project-ref", $ProjectRef)
   if ($LASTEXITCODE -ne 0) { throw "supabase link failed" }
 
   Write-Host "Applying database migrations..."
-  & supabase db push --password $DatabasePassword --include-all
+  Invoke-Supabase @("db", "push", "--include-all")
   if ($LASTEXITCODE -ne 0) { throw "supabase db push failed" }
 
   $secretNames = @(
@@ -92,17 +123,36 @@ try {
     "VAPID_PUBLIC_KEY",
     "VAPID_PRIVATE_KEY"
   )
-  $secretArgs = @("secrets", "set")
+  $secretLines = @()
   foreach ($name in $secretNames) {
     if ($values[$name]) {
-      $secretArgs += "${name}=$($values[$name])"
+      $secretLines += "${name}=$($values[$name])"
     }
   }
-  $secretArgs += @("--project-ref", $ProjectRef)
 
   Write-Host "Uploading non-empty Edge Function secrets..."
-  & supabase @secretArgs
-  if ($LASTEXITCODE -ne 0) { throw "supabase secrets set failed" }
+  New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+  [IO.File]::WriteAllLines(
+    $secretFile,
+    $secretLines,
+    (New-Object Text.UTF8Encoding($false))
+  )
+  Protect-SecretFile -Path $secretFile
+  try {
+    Invoke-Supabase @(
+      "secrets",
+      "set",
+      "--env-file",
+      $secretFile,
+      "--project-ref",
+      $ProjectRef
+    )
+    if ($LASTEXITCODE -ne 0) { throw "supabase secrets set failed" }
+  } finally {
+    if (Test-Path -LiteralPath $secretFile) {
+      Remove-Item -LiteralPath $secretFile -Force
+    }
+  }
 
   $deployments = @(
     @{ Name = "api-web"; NoVerify = $true },
@@ -123,13 +173,12 @@ try {
     Write-Host "Deploying $($deployment.Name)..."
     $args = @("functions", "deploy", $deployment.Name, "--project-ref", $ProjectRef)
     if ($deployment.NoVerify) { $args += "--no-verify-jwt" }
-    & supabase @args
+    Invoke-Supabase $args
     if ($LASTEXITCODE -ne 0) {
       throw "Function deployment failed: $($deployment.Name)"
     }
   }
 
-  New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
   $dispatchSecret = $values["DISPATCH_SECRET"].Replace("'", "''")
   $baseUrl = "https://$ProjectRef.supabase.co/functions/v1"
   @"
@@ -155,5 +204,6 @@ select vault.create_secret('$dispatchSecret', 'dispatch_secret');
   Write-Host $vaultFile
   Write-Host "Delete it after the Vault secrets are created."
 } finally {
+  $env:SUPABASE_DB_PASSWORD = $previousDatabasePassword
   Pop-Location
 }

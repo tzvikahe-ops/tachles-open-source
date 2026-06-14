@@ -5,6 +5,12 @@ Import-Module (Join-Path $PSScriptRoot "Router.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "..\core\StateStore.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "..\core\EnvStore.psm1") -Force
 Import-Module (Join-Path $PSScriptRoot "..\core\ProcessRunner.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\core\Redaction.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\actions\Prerequisites.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\actions\Supabase.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\actions\Vercel.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\actions\Google.psm1") -Force
+Import-Module (Join-Path $PSScriptRoot "..\actions\Verification.psm1") -Force
 
 $script:ShouldStop = $false
 
@@ -219,6 +225,43 @@ function Get-SetupRedactionSecrets {
   )
 }
 
+function Test-SetupConfigValue {
+  param(
+    [Parameter(Mandatory = $true)][string]$Name,
+    [AllowEmptyString()][string]$Value
+  )
+
+  switch ($Name) {
+    "SUPABASE_PROJECT_REF" {
+      return $Value -match '^[a-z0-9]{20}$'
+    }
+    "VITE_SUPABASE_PUBLISHABLE_KEY" {
+      return $Value -match '^(sb_publishable_|eyJ)[A-Za-z0-9._-]+$'
+    }
+    "WEB_APP_URL" {
+      if ([string]::IsNullOrWhiteSpace($Value)) { return $true }
+      $uri = $null
+      return [Uri]::TryCreate($Value, [UriKind]::Absolute, [ref]$uri) -and
+        $uri.Scheme -eq "https"
+    }
+    "WEB_ALLOWED_EMAILS" {
+      return $Value -notmatch '[\r\n]'
+    }
+    "VAPID_SUBJECT" {
+      return $Value -match '^mailto:[^@\s]+@[^@\s]+\.[^@\s]+$'
+    }
+    "OAUTH_REDIRECT_URI" {
+      if ([string]::IsNullOrWhiteSpace($Value)) { return $true }
+      return $Value -match (
+        '^https://[a-z0-9]{20}\.supabase\.co/functions/v1/oauth-callback$'
+      )
+    }
+    default {
+      return $false
+    }
+  }
+}
+
 function Invoke-SetupRequest {
   param(
     [Parameter(Mandatory = $true)]
@@ -299,6 +342,14 @@ function Invoke-SetupRequest {
           $changes["installMode"] = [string]$body.installMode
         }
         $state = Update-SetupState -StatePath $Paths.StatePath -Changes $changes
+        if ($body.PSObject.Properties.Name -contains "stepStatus") {
+          $stepName = [string]$body.stepStatus.step
+          $stepValue = [string]$body.stepStatus.status
+          $state = Set-SetupStepStatus `
+            -StatePath $Paths.StatePath `
+            -Step $stepName `
+            -Status $stepValue
+        }
         Write-SetupLogEntry -LogsRoot $Paths.LogsRoot -Message "Setup state updated."
         Write-JsonResponse `
           -Stream $Stream `
@@ -321,6 +372,7 @@ function Invoke-SetupRequest {
       $allowedSecrets = @(
         "ANTHROPIC_API_KEY",
         "OPENAI_API_KEY",
+        "SUPABASE_DB_PASSWORD",
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
         "VAPID_SUBJECT",
@@ -361,6 +413,7 @@ function Invoke-SetupRequest {
       $names = @(
         "ANTHROPIC_API_KEY",
         "OPENAI_API_KEY",
+        "SUPABASE_DB_PASSWORD",
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
         "VAPID_SUBJECT",
@@ -372,6 +425,131 @@ function Invoke-SetupRequest {
         -StatusCode 200 `
         -StatusText "OK" `
         -Value (Get-SetupSecretStatus -EnvPath $EnvPath -Names $names) `
+        -Headers $corsHeaders
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/config") {
+      $values = Read-SetupEnv -EnvPath $EnvPath
+      $publicNames = @(
+        "SUPABASE_PROJECT_REF",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "WEB_APP_URL",
+        "WEB_ALLOWED_EMAILS",
+        "VAPID_SUBJECT",
+        "OAUTH_REDIRECT_URI"
+      )
+      $public = [ordered]@{}
+      foreach ($name in $publicNames) {
+        $public[$name] = if ($values.Contains($name)) {
+          [string]$values[$name]
+        } else {
+          ""
+        }
+      }
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value $public `
+        -Headers $corsHeaders
+      return
+    }
+
+    if ($Request.Method -eq "POST" -and $path -eq "/api/config") {
+      $allowedConfig = @(
+        "SUPABASE_PROJECT_REF",
+        "VITE_SUPABASE_PUBLISHABLE_KEY",
+        "WEB_APP_URL",
+        "WEB_ALLOWED_EMAILS",
+        "VAPID_SUBJECT",
+        "OAUTH_REDIRECT_URI"
+      )
+      try {
+        $body = $Request.Body | ConvertFrom-Json
+        $properties = @($body.PSObject.Properties)
+        if ($properties.Count -eq 0) {
+          throw "Configuration body is empty."
+        }
+        foreach ($property in $properties) {
+          if ($property.Name -notin $allowedConfig) {
+            throw "Invalid configuration field."
+          }
+          if (-not (Test-SetupConfigValue `
+              -Name $property.Name `
+              -Value ([string]$property.Value))) {
+            throw "Invalid configuration value."
+          }
+        }
+        foreach ($property in $properties) {
+          Set-SetupEnvValue `
+            -EnvPath $EnvPath `
+            -Name $property.Name `
+            -Value ([string]$property.Value)
+        }
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 200 `
+          -StatusText "OK" `
+          -Value @{ configured = $true } `
+          -Headers $corsHeaders
+      } catch {
+        Write-JsonResponse `
+          -Stream $Stream `
+          -StatusCode 400 `
+          -StatusText "Bad Request" `
+          -Value @{ error = "invalid_config" } `
+          -Headers $corsHeaders
+      }
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/prerequisites") {
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value (Get-SetupPrerequisites) `
+        -Headers $corsHeaders
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/supabase") {
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value (Get-SetupSupabaseStatus -EnvPath $EnvPath) `
+        -Headers $corsHeaders
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/vercel") {
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value (Get-SetupVercelStatus -EnvPath $EnvPath) `
+        -Headers $corsHeaders
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/google") {
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value (Get-SetupGoogleGuidance -EnvPath $EnvPath) `
+        -Headers $corsHeaders
+      return
+    }
+
+    if ($Request.Method -eq "GET" -and $path -eq "/api/verification") {
+      Write-JsonResponse `
+        -Stream $Stream `
+        -StatusCode 200 `
+        -StatusText "OK" `
+        -Value (Get-SetupVerificationReport -EnvPath $EnvPath) `
         -Headers $corsHeaders
       return
     }
@@ -402,7 +580,10 @@ function Invoke-SetupRequest {
         return
       }
 
-      $definition = Get-SetupActionDefinition -Name $actionName
+      $definition = Get-SetupActionDefinition `
+        -Name $actionName `
+        -WorkspaceRoot (Split-Path -Parent $EnvPath) `
+        -WizardRoot (Resolve-Path (Join-Path $PSScriptRoot ".."))
       if ($null -eq $definition) {
         Write-JsonResponse `
           -Stream $Stream `
@@ -445,10 +626,15 @@ function Invoke-SetupRequest {
       if ($Runner.Status -in @("succeeded", "failed") -and
         -not $Runner.StateApplied -and
         -not [string]::IsNullOrWhiteSpace($Runner.Step)) {
+        $stepStatus = if ($Runner.Status -eq "failed") {
+          "failed"
+        } else {
+          $Runner.CompletionStatus
+        }
         Set-SetupStepStatus `
           -StatePath $Paths.StatePath `
           -Step $Runner.Step `
-          -Status $Runner.Status |
+          -Status $stepStatus |
           Out-Null
         $Runner.StateApplied = $true
       }
@@ -470,6 +656,27 @@ function Invoke-SetupRequest {
       } else {
         $lines = @(Get-Content -LiteralPath $latest.FullName -Encoding UTF8)
         ($lines | Select-Object -Last 200) -join [Environment]::NewLine
+      }
+      if ($Runner.Status -eq "running") {
+        $liveParts = @()
+        foreach ($runtimePath in @($Runner.StdoutPath, $Runner.StderrPath)) {
+          if (-not [string]::IsNullOrWhiteSpace($runtimePath) -and
+            (Test-Path -LiteralPath $runtimePath -PathType Leaf)) {
+            $liveParts += Get-Content `
+              -LiteralPath $runtimePath `
+              -Raw `
+              -Encoding UTF8
+          }
+        }
+        if ($liveParts.Count -gt 0) {
+          $live = Protect-SetupLogText `
+            -Text ($liveParts -join [Environment]::NewLine) `
+            -Secrets (Get-SetupRedactionSecrets -EnvPath $EnvPath)
+          $content = @($content, $live) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -Last 200
+          $content = $content -join [Environment]::NewLine
+        }
       }
       Write-JsonResponse `
         -Stream $Stream `

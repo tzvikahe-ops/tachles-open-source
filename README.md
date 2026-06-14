@@ -1,16 +1,33 @@
 # תכלס (Tachles)
 
-[![CI](https://github.com/tzvikahe-ops/Tachles/actions/workflows/ci.yml/badge.svg)](https://github.com/tzvikahe-ops/Tachles/actions/workflows/ci.yml)
+[![CI](https://github.com/tzvikahe-ops/tachles-open-source/actions/workflows/ci.yml/badge.svg)](https://github.com/tzvikahe-ops/tachles-open-source/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 מחברת אישית חכמה בעברית, זמינה כאפליקציית PWA עצמאית וכבוט Telegram:
 
-**אפליקציית PWA:** https://tachles-web.vercel.app
+## התקנה עצמית ב-Windows
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ftzvikahe-ops%2FTachles&root-directory=apps%2Fweb-app&env=VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY,VITE_API_BASE)
+1. הורידו או שכפלו את המאגר.
+2. הפעילו בלחיצה כפולה:
 
-**התקנה עצמית:** [מדריך בעברית](SELF_HOSTING.md) ·
+```text
+Start-Tachles-Setup.cmd
+```
+
+אשף עברי מקומי יבדוק את המחשב, יחבר Supabase ו-Vercel, יגדיר AI, Push
+ו-Google לפי הבחירה שלכם, ולבסוף יוודא שה-PWA באמת זמינה. המפתחות נשמרים
+רק במחשב ואינם נשלחים לאתר של תכלס.
+
+הפעולות היחידות שנשארות ידניות הן יצירת חשבונות או פרויקטים אצל ספקי הענן,
+אישור כניסה ב-CLI, הגדרת כתובות Auth, הרצת קובץ Vault והגדרת OAuth של Google.
+האשף פותח את המסכים המדויקים ומציג את הערכים להעתקה.
+
+**מדריך מלא ופתרון תקלות:** [עברית](SELF_HOSTING.md) ·
 [English guide](SELF_HOSTING.en.md)
+
+<p align="center">
+  <img src="docs/screenshots/setup-wizard.png" alt="אשף ההתקנה המקומי של תכלס" width="420">
+</p>
 
 <p align="center">
   <img src="docs/screenshots/pwa-home.png" alt="מסך הבית של אפליקציית תכלס" width="390">
