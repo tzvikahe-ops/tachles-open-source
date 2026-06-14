@@ -58,6 +58,26 @@
               <span>משימות, רשימות, זיכרונות, פרויקטים ותזכורות ידניות.</span>
             </button>
           </div>
+
+          <div class="action-panel" id="action-panel" hidden>
+            <strong>בדיקת מנגנון ההתקנה</strong>
+            <p>
+              הפעולה המקומית בודקת הרצה, מעקב, ביטול ויומן
+              לפני חיבור שירותי ענן.
+            </p>
+            <div class="action-buttons">
+              <button class="primary" id="run-check" type="button">
+                הפעלת בדיקה מקומית
+              </button>
+              <button class="secondary" id="cancel-check" type="button" hidden>
+                ביטול
+              </button>
+            </div>
+            <details>
+              <summary>יומן טכני</summary>
+              <pre id="technical-log">עוד אין פלט להצגה.</pre>
+            </details>
+          </div>
         </div>
 
         <div class="status" id="status" role="status" aria-live="polite">
