@@ -17,7 +17,7 @@ jobs:
     name: Deno
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -30,7 +30,7 @@ jobs:
       run:
         working-directory: apps/mini-app
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -48,7 +48,7 @@ jobs:
       run:
         working-directory: apps/web-app
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -62,7 +62,7 @@ jobs:
     name: Setup Wizard
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - shell: powershell
         run: |
           powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
